@@ -10,7 +10,7 @@ Operational wisdom for DeFi on Solana via SoulPass CLI. For command syntax and p
 4. [Recipes — Common DeFi Patterns](#recipes)
 5. [High-Frequency Daemon](#high-frequency-daemon)
 6. [Pitfalls & Safety](#pitfalls)
-7. [Trading Strategies](#trading-strategies) — Meme coin safety, copy trading, signal execution
+7. [Trading Strategies](#trading-strategies) — Meme coin safety, auto copy trading (follow a book), manual whale tracking, signal execution
 
 ---
 
@@ -256,9 +256,31 @@ soulpass swap --from BONK --to USDC --amount <position> --slippage 300
 
 **Slippage for meme coins:** Use 200-500 BPS. Thin orderbooks cause large price impact. If a swap fails with slippage error, increase by 50 BPS increments — don't jump to 500.
 
-### Copy Trading Strategy (Solana Whales)
+### Auto Copy Trading: Follow a Book (primary path)
 
-Mirror trades from profitable Solana wallets. Tools like GMGN.ai, SolSqueezer, and Nansen help identify wallets with strong track records.
+The primary way to copy trade on SoulPass is following a **book** — a portfolio managed by someone else, rebalanced by YOUR device with YOUR keys. Full walkthrough (activation, agent vs. human execution, pause/resume/stop, what `plan mismatch`, `needs another device` and `session-expired` mean) lives in the main skill file's "I want to copy trade" section — read that first. Short version:
+
+```bash
+# 1. Follow the book on soulpass.ai (sets budget + venues — the CLI never invents a policy)
+
+# 2. Check what this device can execute
+soulpass copy status
+
+# 3. One-time activation ceremony (Solana session + HL approvals if the book uses Hyperliquid)
+soulpass copy activate <bookId>
+
+# 4a. Agent path — execute what's open right now, print a result, exit
+soulpass copy run
+
+# 4b. Human path — install as a launchd daemon; NOT agent-callable, never exits on its own
+soulpass copy daemon
+```
+
+Prefer this over manual tracking whenever a book exists: the server does signal generation and position sizing (`sleeve`), and this device only re-derives the plan, verifies it matches, and executes.
+
+### Manual Whale Tracking (fallback — no book covers this wallet)
+
+Mirror trades from a wallet yourself when no book on soulpass.ai already follows it. This is strictly more work than `copy activate` — you do the signal generation, the sizing, and the exit timing by hand. Tools like GMGN.ai, SolSqueezer, and Nansen help identify wallets with strong track records.
 
 **Criteria for selecting wallets to follow:**
 - ROI above 100%
@@ -266,7 +288,7 @@ Mirror trades from profitable Solana wallets. Tools like GMGN.ai, SolSqueezer, a
 - Not too many trades per day (avoids gambling patterns)
 - Consistent over 30+ days (not just one lucky trade)
 
-**Copy trading workflow:**
+**Manual tracking workflow:**
 
 ```bash
 # Whale bought a token — you evaluate and follow
@@ -294,7 +316,7 @@ soulpass swap --from <token> --to USDC --amount <position> --slippage 200
 - **Don't stack correlated positions** — if the whale is buying 5 meme coins, that's one bet, not five
 - **Exit discipline** — if you can't track the whale's exit, set a time-based exit (e.g., sell after 4 hours)
 
-For speed-critical copy trading, use the daemon (`soulpass serve`) to avoid 600ms CLI startup per call.
+For speed-critical manual tracking, use the daemon (`soulpass serve`) to avoid 600ms CLI startup per call.
 
 ### Signal → Execution Pipeline
 

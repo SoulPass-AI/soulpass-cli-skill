@@ -129,39 +129,62 @@ For the full meme coin safety checklist and copy trading strategies, read `refer
 
 ---
 
-## "I want to copy trade Solana whales"
+## "I want to copy trade" (follow a book)
 
-Copy trading profitable wallets is the #1 retail strategy on Solana. The pattern:
+Auto copy trading follows a **book** — a portfolio someone else manages — and executes its rebalances with YOUR keys on YOUR device. This is the primary way to copy trade on SoulPass. Hand-tracking a single wallet's swaps (further down) is a manual fallback for when no book covers what you want to follow.
 
-1. **Identify profitable wallets** — use on-chain tools (GMGN.ai, SolSqueezer, Nansen) to find wallets with >100% ROI and >60% win rate
-2. **Monitor their trades** — detect when a whale buys/sells a token
-3. **Evaluate the signal** — you (the AI) assess token risk before following
-4. **Execute with proportional sizing** — never match whale size 1:1
+### 1. Follow the book on soulpass.ai
+
+Book discovery and following happen on the web, not the CLI — there is no `soulpass market books` command (`soulpass market …` is cross-venue US-stock quote data; it has nothing to do with leader books). Browse books on soulpass.ai, pick one, and set the budget and venues (Solana / Hyperliquid / Robinhood Chain) there. That creates the **policy** for your account — the CLI can activate an existing policy but never invents one.
+
+### 2. Check what this device can execute
 
 ```bash
-# Whale bought BONK — you evaluate and follow with small size
-
-# 1. Check token risk first
-soulpass price BONK
-
-# 2. Check your balance
-soulpass balance --token USDC
-
-# 3. If risk is acceptable, follow with small position
-soulpass swap --from USDC --to BONK --amount 20 --slippage 200
-
-# 4. Set a mental exit — monitor and sell when target hit
-soulpass price BONK    # check periodically
-soulpass swap --from BONK --to USDC --amount <all-bonk> --slippage 200   # exit
+soulpass copy status
 ```
 
-**Risk management:**
-- Never risk more than 2-5% of your balance per copy trade
-- Always check token risk (`soulpass price`) before following — whales can afford losses you can't
-- Monitor your positions — whales exit fast, you need to exit fast too
-- Use the daemon (`soulpass serve`) for speed-critical execution
+Lists every book your account follows and, under `caps`, what THIS Mac can actually sign: `solanaSession`, `hlAgent`, `evmOwner`. A false bit disables that venue's legs on this device until fixed.
 
-For the complete copy trading workflow, read `references/defi-cookbook.md` → "Copy Trading Strategy".
+### 3. Activate on this device — the one attended moment
+
+```bash
+soulpass copy activate <bookId>
+```
+
+A one-time ceremony: creates or reuses a Solana session key, approves this Mac as a Hyperliquid agent plus the builder fee (only if the policy uses Hyperliquid), and tightens `~/.soulpass/spend-policy.json` to the budget you agreed to on the web. Everything after this runs with no further prompts.
+
+**If this Mac is not the account's Hyperliquid master**, the HL agent approval fails activation and tells you exactly that: *"Approving a Hyperliquid agent needs the master key, which is on your phone. Activate from the SoulPass app."* Approve from the iPhone first, then re-run `activate` here — it is idempotent, so re-running after a partial failure is the recovery path, not a mistake.
+
+### 4. Run it — agent path vs. human path
+
+Two entry points drive the identical runner:
+
+```bash
+soulpass copy run          # agent-callable — executes every open intent once, prints a result, exits
+soulpass copy daemon       # human-only — subscribes to the leader's stream, never exits on its own
+```
+
+**`copy daemon` is NOT agent-callable.** `soulpass schema` reports it `agentCallable: false` / `execution: "human_tty"`: without `--once` it never returns, so an agent shelling out to it would hang forever waiting on a result that never comes. As an agent, use `soulpass copy run` — call it on whatever cadence wakes you up. Unattended 24/7 execution is a human's job: they install `copy daemon` under launchd and walk away (see `docs/copy-daemon.md` in the CLI repo for the plist). It reconnects on its own after a drop and finishes any run already in flight before exiting on a stop signal.
+
+### 5. Pause / resume / stop
+
+```bash
+soulpass copy pause <bookId>     # stop executing this book here, keep the policy
+soulpass copy resume <bookId>    # resume it
+soulpass copy stop <bookId>      # drop the policy on this account entirely
+```
+
+### It re-plans before it signs — and that's the safety net
+
+Before executing anything, this device **re-derives the rebalance plan itself** from the book snapshot, the sleeve, and the policy you consented to — it never blindly signs whatever legs a server happened to send. A mismatch fails the run (`status: "failed"`, `reason: "plan mismatch"`) instead of executing; treat that as a security event worth reading logs over, not something to retry.
+
+Two things that look like failures but are the system working as designed:
+- **`needs another device`** on a leg — this Mac lacks the capability that leg needs (no Solana session, no HL agent approval, not an EVM owner). It is not an error: another of your devices that DOES have that capability picks it up instead.
+- **`session-expired` warning** — the Solana session lapsed mid-run. The book auto-pauses, server and local, so nothing keeps planning legs this device can no longer sign. Fix it with `soulpass copy activate <bookId>` to renew the session, then `soulpass copy resume <bookId>` — copy trading never resumes by itself.
+
+### Manual alternative: tracking a wallet yourself
+
+If no book on soulpass.ai already follows the whale or strategy you want, you can still hand-track a wallet's swaps and mirror them with `soulpass swap` — slower to react and entirely on you for sizing and exits. See `references/defi-cookbook.md` → "Manual Whale Tracking" for that workflow. Prefer `copy activate` whenever a book exists: the server does signal generation and position sizing, and this device only verifies and executes.
 
 ---
 
@@ -397,7 +420,7 @@ Defaults to **production** (Solana Mainnet). Set `SOULPASS_ENV=test` for Devnet.
 
 | You need to... | Read |
 |----------------|------|
-| Swap strategy, token risk checks, meme coin safety, copy trading, DCA, yield strategies, daemon | `references/defi-cookbook.md` |
+| Swap strategy, token risk checks, meme coin safety, manual whale tracking (secondary to `copy activate` — see "I want to copy trade" above), DCA, yield strategies, daemon | `references/defi-cookbook.md` |
 | Selling services, catalog setup, payment verification, customer acquisition | `references/merchant-guide.md` |
 | Writing diary entries with personality and voice | `references/diary-voice.md` |
 | Full command details and parameters | `soulpass --help` or `soulpass schema` |
