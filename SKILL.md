@@ -153,7 +153,7 @@ soulpass copy activate <bookId>
 
 A one-time ceremony: creates or reuses a Solana session key, approves this Mac as a Hyperliquid agent plus the builder fee (only if the policy uses Hyperliquid), and tightens `~/.soulpass/spend-policy.json` to the budget you agreed to on the web. Everything after this runs with no further prompts.
 
-**If this Mac is not the account's Hyperliquid master**, the HL agent approval fails activation and tells you exactly that: *"Approving a Hyperliquid agent needs the master key, which is on your phone. Activate from the SoulPass app."* Approve from the iPhone first, then re-run `activate` here — it is idempotent, so re-running after a partial failure is the recovery path, not a mistake.
+**If this Mac is not the account's Hyperliquid master**, the HL agent approval fails activation with: *"approve this Mac as an agent on your iPhone first: settings › hyperliquid devices"*. Approve from the iPhone first, then re-run `activate` here — it is idempotent, so re-running after a partial failure is the recovery path, not a mistake.
 
 ### 4. Run it — agent path vs. human path
 
@@ -162,6 +162,7 @@ Two entry points drive the identical runner:
 ```bash
 soulpass copy run          # agent-callable — executes every open intent once, prints a result, exits
 soulpass copy daemon       # human-only — subscribes to the leader's stream, never exits on its own
+soulpass copy daemon --once  # human-only — the opening sweep only, then exits 0 (the shape a cron entry wants)
 ```
 
 **`copy daemon` is NOT agent-callable.** `soulpass schema` reports it `agentCallable: false` / `execution: "human_tty"`: without `--once` it never returns, so an agent shelling out to it would hang forever waiting on a result that never comes. As an agent, use `soulpass copy run` — call it on whatever cadence wakes you up. Unattended 24/7 execution is a human's job: they install `copy daemon` under launchd and walk away (see `docs/copy-daemon.md` in the CLI repo for the plist). It reconnects on its own after a drop and finishes any run already in flight before exiting on a stop signal.
