@@ -135,7 +135,7 @@ Auto copy trading follows a **book** — a portfolio someone else manages — an
 
 ### 1. Follow the book on soulpass.ai
 
-Book discovery and following happen on the web, not the CLI — there is no `soulpass market books` command (`soulpass market …` is cross-venue US-stock quote data; it has nothing to do with leader books). Browse books on soulpass.ai, pick one, and set the budget and venues (Solana / Hyperliquid / Robinhood Chain) there. That creates the **policy** for your account — the CLI can activate an existing policy but never invents one.
+Book discovery and following happen on the web, not the CLI — there is no `soulpass market books` command (`market` is matrix-market's read-only surface — quote/discover/wallet/watchlist — not a book). Browse books on soulpass.ai, pick one, and set the budget and venues (Solana / Hyperliquid / Robinhood Chain) there. That creates the **policy** for your account — the CLI can activate an existing policy but never invents one.
 
 ### 2. Check what this device can execute
 
