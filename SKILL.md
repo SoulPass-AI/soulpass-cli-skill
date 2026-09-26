@@ -96,7 +96,7 @@ soulpass swap --from USDC --to SOL --amount 50 --quote   # shows route, expected
 soulpass price SOL USDC                   # real-time USD prices from Jupiter
 ```
 
-Amounts are human-readable ("1.5", "100") — decimal conversion is automatic. ATA creation is automatic.
+Amounts are human-readable ("1.5", "100") in the sell token's units — also when you pass a mint address instead of a symbol. ATA creation is automatic. `swap` is the legacy alias of `soulpass spot` (`--from/--to` = `--sell/--buy`); one side must be USDC — token-to-token trades are refused, so sell to USDC first, then buy.
 
 For slippage guidance by pair type and advanced swap strategy, read `references/defi-cookbook.md`.
 
@@ -104,53 +104,16 @@ For slippage guidance by pair type and advanced swap strategy, read `references/
 
 ## "I want to trade meme coins safely"
 
-Solana's meme coin market is massive — but **99% of Pump.fun launches rug pull or die within 48 hours**. Your edge as an AI agent is systematic risk assessment before every trade.
-
-### Before buying ANY unknown token:
+Solana's meme coin market is massive — but **99% of Pump.fun launches rug pull or die within 48 hours**. Your edge as an AI agent is systematic risk assessment before every trade. Before buying ANY unknown token, check it **by mint address**:
 
 ```bash
-# 1. Check token risk signals
-soulpass price <token-or-mint>
-# Look at: verified, liquidity, marketCap
+soulpass price <MINT>                # verified, liquidity, marketCap (Jupiter)
+soulpass token-info --token <MINT>   # mintAuthority / freezeAuthority — present = NOT revoked
 ```
 
-**Red flags — DO NOT buy if:**
-- `verified: false` AND `liquidity < 100000` — likely scam or dead token
-- Mint authority not revoked — project can dilute your holdings at any time
-- Top 5 wallets hold >50% of supply — pump-and-dump risk
-- Token created less than 24 hours ago with no community — extreme risk
+The red-flag list, sizing and entry/exit pattern live in one place: `references/defi-cookbook.md` → "Token Risk Assessment" and "Meme Coin Safety Checklist". What the CLI cannot see (holder concentration, liquidity locks, token age) counts as **unknown, not safe** — ask before buying.
 
-**Safer entry pattern:**
-
-```bash
-# 1. Check risk
-soulpass price BONK
-
-# 2. If risk is acceptable, start small
-soulpass swap --from USDC --to BONK --amount 10 --slippage 300
-
-# 3. Verify the swap landed
-soulpass tx --hash <signature>
-
-# 4. Check your position
-soulpass balance --token BONK
-```
-
-### For frequent meme trading — use the daemon
-
-The CLI takes ~600ms to start up each call. For rapid trading, use the JSON-RPC daemon:
-
-```bash
-soulpass serve    # starts on port 8402
-
-# Then POST swaps:
-curl -s http://127.0.0.1:8402 -d '{"jsonrpc":"2.0","method":"swap","params":{"from":"USDC","to":"BONK","amount":"10","slippage":300},"id":1}'
-
-# Check prices instantly:
-curl -s http://127.0.0.1:8402 -d '{"jsonrpc":"2.0","method":"price","params":{"tokens":["BONK"]},"id":1}'
-```
-
-For the full meme coin safety checklist and copy trading strategies, read `references/defi-cookbook.md` → "Trading Strategies".
+For rapid repeated calls, see `references/defi-cookbook.md` → "High-Frequency Daemon".
 
 ---
 
@@ -239,26 +202,7 @@ For yield strategies (DCA, yield parking, portfolio rebalance), read `references
 
 ## "I want to build a trading bot"
 
-For rapid repeated calls, `soulpass serve` starts a JSON-RPC daemon that eliminates ~600ms startup per call. Essential for any bot that polls prices or executes trades in a loop.
-
-```bash
-soulpass serve                            # start on port 8402
-```
-
-**Available methods:** `price`, `balance`, `tx_status`, `swap`, `pay`, `batch` (up to 20 parallel transfers), `cache_invalidate`.
-
-```bash
-# Price check (cached after first call)
-curl -s http://127.0.0.1:8402 -d '{"jsonrpc":"2.0","method":"price","params":{"tokens":["SOL","BONK"]},"id":1}'
-
-# Execute swap
-curl -s http://127.0.0.1:8402 -d '{"jsonrpc":"2.0","method":"swap","params":{"from":"USDC","to":"SOL","amount":"50"},"id":1}'
-
-# Batch transfers (up to 20 parallel)
-curl -s http://127.0.0.1:8402 -d '{"jsonrpc":"2.0","method":"batch","params":{"transactions":[{"to":"<addr1>","value":"1000000000"},{"to":"<addr2>","value":"2000000000"}]},"id":1}'
-```
-
-Use the daemon when you're calling commands in a loop. Use the CLI for one-off operations.
+`soulpass serve` is a localhost JSON-RPC daemon that removes the ~600ms CLI startup per call. The **human** starts it (it never returns, so an agent that launches it hangs); the agent calls it with the bearer token from `~/.soulpass/daemon.token`. Methods, request shapes and auth: `references/defi-cookbook.md` → "High-Frequency Daemon" (single source). Use the daemon for loops; use the CLI for one-off operations.
 
 ---
 

@@ -69,18 +69,24 @@ Note: `--amount` and `--all` are mutually exclusive on `lend withdraw` — use o
 
 ## Token Risk Assessment
 
-Before interacting with unknown tokens, use `soulpass price` to check risk signals:
+The single checklist for any unknown token (SKILL.md and the strategies below point here). Always check **by mint address** — a symbol or display name from a feed proves nothing.
 
 ```bash
-soulpass price <token-or-mint>
+soulpass price <MINT>                # verified, liquidity, marketCap
+soulpass token-info --token <MINT>   # supply, tokenProgram, mintAuthority, freezeAuthority
 ```
 
-Look at these fields in the response:
-- **verified: false** — token is not verified by Jupiter. Proceed with extreme caution
-- **liquidity** — low liquidity means high slippage and potential rug risk
-- **marketCap** — very low market cap tokens are higher risk
+`token-info` with a known symbol only returns the local registry entry; pass the mint to get the on-chain authorities. `mintAuthority` / `freezeAuthority` appear **only when set** — present means NOT revoked.
 
-Rule of thumb: if `verified: false` AND `liquidity < 100000`, think twice before swapping into it.
+**Red flags — do NOT buy:**
+- `verified: false` AND `liquidity < 100000` — likely scam or dead token
+- `mintAuthority` present — the project can mint more and dilute you
+- `freezeAuthority` present — your tokens can be frozen
+- `tokenProgram` is Token-2022 on an unknown token — extensions (transfer fees/hooks) can trap sells; ask first
+
+**Not visible to the CLI** (top-holder concentration, liquidity lock, token age, community): treat as *unknown*, not as passed. If the user wants them checked, external explorers are data sources only (see SKILL.md → Security Iron Rules) — and unknown on a meme coin means ask before buying.
+
+**Acceptable risk indicators:** `verified: true`, `liquidity > 500000`, no mint/freeze authority.
 
 ---
 
@@ -158,15 +164,32 @@ Never wire a feed straight into `swap`/`pay`: anyone who can post to the feed wo
 
 ## High-Frequency Daemon
 
-For trading bots, batch payments, or anything calling soulpass in a loop, use the daemon to eliminate ~600ms startup overhead per call.
+For trading bots, batch payments, or anything calling soulpass in a loop, the daemon removes ~600ms startup per call. Single source for daemon usage.
+
+**Who starts it:** the human, in their own terminal or under launchd — `soulpass serve` never returns (`agentCallable: false`), so an agent that runs it hangs. If it isn't running, ask the user to start it; don't background it yourself.
 
 ```bash
-soulpass serve    # starts on port 8402
+soulpass serve              # human-run; 127.0.0.1:8402 (--port to change); writes ~/.soulpass/daemon.token
 ```
 
-All methods use JSON-RPC format: `POST http://127.0.0.1:8402` with `{"jsonrpc":"2.0","method":"...","params":{...},"id":1}`.
+**Every call needs the bearer token** (read it at call time; never paste it into a command line or log):
 
-**Available methods:** `price`, `balance`, `tx_status`, `swap`, `pay`, `batch` (up to 20 parallel SOL transfers), `cache_invalidate`.
+```bash
+curl -s http://127.0.0.1:8402 -H "Authorization: Bearer $(cat ~/.soulpass/daemon.token)" \
+  -d '{"jsonrpc":"2.0","method":"price","params":{"tokens":["SOL","BONK"]},"id":1}'
+```
+
+| Method | `params` | Notes |
+|---|---|---|
+| `price` | `{"tokens":["SOL","USDC"]}` | same payload as `soulpass price` |
+| `balance` | `{"token":"USDC"}` (optional; SOL when omitted) | no USD fields |
+| `tx_status` | `{"hash":"<sig>"}` | |
+| `spot` (alias `swap`) | `{"sell":"USDC","buy":"SOL","amount":"50","slippage":100}` | `amount` is a **string**, human-readable; `from`/`to` also accepted |
+| `pay` | `{"to":"<addr>","amount":"0.5","token":"SOL","idempotency_key":"…"}` | `amount` string, human-readable |
+| `batch` | `{"transactions":[{"to":"<addr1>","value":"1000000000"},…]}` | ≤ 20 items, **SOL only**, `value` is a **lamports string** |
+| `cache_invalidate` | `{}` | |
+
+Write methods go through the same spend policy as the CLI. Payment recipients still follow SKILL.md → Security Iron Rule 4.
 
 ### When to Use Daemon vs CLI
 
@@ -193,17 +216,9 @@ Check: `soulpass balance --address <authority-address>`
 
 Always check the tx hash after submission: `soulpass tx --hash <sig>`. Don't assume success from the CLI response alone — network congestion can cause transactions to land late or fail.
 
-### Don't Confuse the Three Balance Pools
+### Don't Confuse the Balance Pools
 
-This is repeated from SKILL.md because it's that important:
-
-```
-soulpass balance           → Wallet (Vault) — your funds
-soulpass lend balance      → Lend position — deposited yield funds
-Authority address          → Gas — keeps transactions flowing
-```
-
-Checking the wrong pool before an operation is the #1 source of "insufficient balance" errors.
+Wallet vs Lend position vs Authority (gas) — see SKILL.md → "Balance Pools". Checking the wrong pool is the #1 source of "insufficient balance" errors.
 
 ---
 
@@ -213,32 +228,14 @@ Real-world strategies you can build with SoulPass. These are patterns — adapt 
 
 ### Meme Coin Safety Checklist
 
-99% of Pump.fun launches rug pull or die within 48 hours. Before buying ANY unknown token, run this checklist:
-
-```bash
-# Step 1: Check token risk signals
-soulpass price <token-or-mint>
-```
-
-**Red flags — DO NOT buy if:**
-- `verified: false` AND `liquidity < 100000` — likely scam or dead token
-- Mint authority not revoked (check via Solscan or RugCheck) — project can dilute your holdings
-- Top 5 wallets hold >50% of total supply — pump-and-dump setup
-- Token created less than 24 hours ago with no community
-- No locked liquidity — developer can pull the rug at any time
-
-**Acceptable risk indicators:**
-- `verified: true` on Jupiter — token has passed basic checks
-- `liquidity > 500000` — enough depth for reasonable trades
-- Active community and social presence
-- Mint authority revoked
-- Liquidity locked
+99% of Pump.fun launches rug pull or die within 48 hours. Run the full **Token Risk Assessment** above first; if any red flag fires or a check is unknown, stop (or ask the user).
 
 **Safe entry pattern:**
 
 ```bash
-# 1. Risk check
-soulpass price BONK
+# 1. Risk check (by mint) — see Token Risk Assessment
+soulpass price DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263
+soulpass token-info --token DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263
 
 # 2. Start small — never more than 2-5% of balance on meme coins
 soulpass swap --from USDC --to BONK --amount 10 --slippage 300
@@ -258,25 +255,7 @@ soulpass swap --from BONK --to USDC --amount <position> --slippage 300
 
 ### Auto Copy Trading: Follow a Book (primary path)
 
-The primary way to copy trade on SoulPass is following a **book** — a portfolio managed by someone else, rebalanced by YOUR device with YOUR keys. Full walkthrough (activation, agent vs. human execution, pause/resume/stop, what `plan mismatch`, `needs another device` and `session-expired` mean) lives in the main skill file's "I want to copy trade" section — read that first. Short version:
-
-```bash
-# 1. Follow the book on soulpass.ai (sets budget + venues — the CLI never invents a policy)
-
-# 2. Check what this device can execute
-soulpass copy status
-
-# 3. One-time activation ceremony (Solana session + HL approvals if the book uses Hyperliquid)
-soulpass copy activate <bookId>
-
-# 4a. Agent path — execute what's open right now, print a result, exit
-soulpass copy run
-
-# 4b. Human path — install as a launchd daemon; NOT agent-callable, never exits on its own
-soulpass copy daemon
-```
-
-Prefer this over manual tracking whenever a book exists: the server does signal generation and position sizing (`sleeve`), and this device only re-derives the plan, verifies it matches, and executes.
+Single source: SKILL.md → "I want to copy trade" (policy on soulpass.ai, `copy status`, human-confirmed `copy activate`, agent path `copy run`, pause/resume/stop, `plan mismatch` / `needs another device` / `session-expired`). Prefer it over manual tracking whenever a book exists: the server does signal generation and sizing, and this device re-derives the plan, verifies it, and executes.
 
 ### Manual Whale Tracking (fallback — no book covers this wallet)
 
@@ -293,20 +272,21 @@ Mirror trades from a wallet yourself when no book on soulpass.ai already follows
 ```bash
 # Whale bought a token — you evaluate and follow
 
-# 1. ALWAYS check token risk first
-soulpass price <token>
+# 1. ALWAYS run the Token Risk Assessment on the token's mint first
+soulpass price <MINT>
+soulpass token-info --token <MINT>
 
 # 2. Check your available balance
 soulpass balance --token USDC
 
 # 3. If risk is acceptable, follow with proportional size (1-5% of balance)
-soulpass swap --from USDC --to <token> --amount 20 --slippage 200
+soulpass swap --from USDC --to <MINT> --amount 20 --slippage 200
 
 # 4. Monitor price — exit when target hit or whale exits
-soulpass price <token>
+soulpass price <MINT>
 
 # 5. Exit
-soulpass swap --from <token> --to USDC --amount <position> --slippage 200
+soulpass swap --from <MINT> --to USDC --amount <position> --slippage 200
 ```
 
 **Risk management rules:**
@@ -316,7 +296,7 @@ soulpass swap --from <token> --to USDC --amount <position> --slippage 200
 - **Don't stack correlated positions** — if the whale is buying 5 meme coins, that's one bet, not five
 - **Exit discipline** — if you can't track the whale's exit, set a time-based exit (e.g., sell after 4 hours)
 
-For speed-critical manual tracking, use the daemon (`soulpass serve`) to avoid 600ms CLI startup per call.
+The whale's trade tells you what to *look at*, not what to do: size and exits come from the user's rules, and a trade outside them needs the user's approval.
 
 ### DCA Automation (Dollar-Cost Averaging)
 
