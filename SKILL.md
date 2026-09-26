@@ -21,7 +21,7 @@ metadata:
             {
               "id": "source",
               "kind": "custom",
-              "command": "cd /tmp && git clone https://github.com/soulpassai/soulpass-cli.git && cd soulpass-cli && make release && sudo cp .build/release/SoulPass /usr/local/bin/soulpass",
+              "command": "cd /tmp && git clone --branch v0.2.0 --depth 1 https://github.com/soulpassai/soulpass-cli.git && cd soulpass-cli && make release && sudo cp .build/release/SoulPass /usr/local/bin/soulpass",
               "bins": ["soulpass"],
               "label": "Build SoulPass CLI from source (requires Xcode + Apple Silicon Mac)",
             },

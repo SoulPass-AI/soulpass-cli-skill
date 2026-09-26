@@ -9,8 +9,8 @@ AI agent skill for **Solana trading, DeFi, and agent-to-agent infrastructure** w
 
 ### Trading & DeFi
 - **Jupiter DEX trading** — swap any Solana token with best-price aggregation across Raydium, Orca, Meteora
-- **Meme coin trading** — built-in rug-pull detection, liquidity checks, risk assessment before every trade
-- **Copy trading** — follow profitable Solana wallets with systematic risk management
+- **Meme coin trading** — pre-trade token risk checks (Jupiter verified flag, liquidity, mint/freeze authority)
+- **Copy trading** — follow a book from soulpass.ai; this device re-derives and verifies every rebalance before signing
 - **DeFi yield** — earn interest via Jupiter Lend on idle USDC/SOL
 - **Trading bots** — JSON-RPC daemon for low-latency automated strategies
 
@@ -29,8 +29,8 @@ AI agent skill for **Solana trading, DeFi, and agent-to-agent infrastructure** w
 # Install
 brew tap soulpassai/soulpass && brew install soulpass
 
-# Initialize wallet
-soulpass init
+# Initialize wallet (brand-new account; if you already have one, run `soulpass link` instead)
+soulpass init --new
 
 # Start trading
 soulpass swap --from USDC --to SOL --amount 100
