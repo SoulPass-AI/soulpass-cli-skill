@@ -133,8 +133,8 @@ Key: always check `lend balance` (not `balance`) before withdrawing. They are se
 Goal: Maintain a target allocation (e.g., 60% SOL / 40% USDC).
 
 ```
-1. soulpass balance                                # SOL balance
-2. soulpass balance --token USDC --usd             # USDC balance in USD
+1. soulpass balance                                # all holdings (SOL + SPL)
+2. soulpass price SOL                              # value SOL in USD yourself (there is no --usd flag)
 3. Calculate current ratio vs target
 4. If over-allocated to SOL: soulpass swap --from SOL --to USDC --amount <delta>
 5. If over-allocated to USDC: soulpass swap --from USDC --to SOL --amount <delta>
