@@ -29,19 +29,19 @@ Default slippage is **50 BPS (0.5%)**. Maximum: **500 BPS (5%)**.
 
 If a swap fails with slippage errors, increase incrementally — don't jump straight to 500.
 
-### Mint Address Mode — Watch the Decimals
+### Mint Address Mode — Same Units as Symbol Mode
 
-When using mint addresses instead of symbols, `--amount` switches to **atomic units** (lamports), not human-readable:
+`--amount` is **always human-readable** in the sell token's own units, whether you pass a symbol or a mint address. The CLI looks up the mint's decimals and converts for you (`SpotMarketCommand` → `parseTokenAmount(amount, decimals:)`). Never pre-multiply by `10^decimals`:
 
 ```bash
-# Symbol mode: human-readable (1.5 SOL)
+# Symbol mode: 1.5 SOL
 soulpass swap --from SOL --to USDC --amount 1.5
 
-# Mint mode: atomic units (1.5 SOL = 1,500,000,000 lamports)
-soulpass swap --from So11...112 --to EPjF...t1v --amount 1500000000
+# Mint mode: STILL 1.5 SOL — not 1500000000
+soulpass swap --from So11111111111111111111111111111111111111112 --to EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v --amount 1.5
 ```
 
-This is the #1 source of "swapped way too much/too little" errors. Always use symbols when available.
+Passing atomic units here would trade `10^decimals` times more than intended. The only SoulPass command that takes atomic units is `sign x402 --amount` (the x402 protocol carries atomic amounts).
 
 ---
 
