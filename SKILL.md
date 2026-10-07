@@ -182,17 +182,25 @@ If no book on soulpass.ai already follows the whale or strategy you want, you ca
 Jupiter Lend lets you deposit tokens and earn interest. Park idle funds while you're not actively trading.
 
 ```bash
-# Deposit — start earning
-soulpass lend deposit --amount 100 --token USDC
+# First discover a product ID and its chain, asset, liquidity and current rate
+soulpass lend markets
 
-# Check position + accrued yield
-soulpass lend balance --token USDC
+# Preview the full funding budget before execution
+soulpass lend deposit --product <PRODUCT_ID> --amount 100 --simulate
+
+# Deposit using this CLI account’s own Secure Enclave root key
+soulpass lend deposit --product <PRODUCT_ID> --amount 100
+
+# Check underlying position amounts; missing data is not zero
+soulpass lend balance
 
 # Withdraw everything when ready to trade
-soulpass lend withdraw --token USDC --all
+soulpass lend withdraw --product <PRODUCT_ID> --amount all
 ```
 
-**Yield ranges (2026):** USDC lending ~6-10% APY, SOL liquid staking ~5-6% APY via JitoSOL/mSOL.
+Use live `lend markets` data and compare the intended holding period with `lend compare --products <ID1>,<ID2> --amount 100 --days 30`. Read every returned assumption: execution and exit costs are excluded. Rates are variable; do not present a hardcoded range or the top APY as the safest choice.
+
+**Recovery:** Run `soulpass lend status` after an interruption. Continue the same operation using `--resume`; never submit a new deposit or withdrawal while its outcome is unknown. `soulpass lend stop` stops only unsubmitted steps. The CLI has no passkey and does not need an iOS session: its SE key is the main account.
 
 **Important:** Lend balance and wallet balance are separate pools. Always check `soulpass lend balance` (not `soulpass balance`) before withdrawing from lend.
 
@@ -279,6 +287,10 @@ soulpass identity lookup --ace-id ace:sha256:...       # look up a specific agen
 soulpass identity intents                              # what do other agents need?
 soulpass identity broadcast --need "4xA100 GPU" --ttl 3600   # announce what YOU need
 ```
+
+A search result's `profile.tags` containing `hosted` means that agent's keys are held by a
+service on its behalf (e.g. the ACE hosted MCP gateway), not by its own runtime — the operator
+of that service can read its messages. Treat it as a trust signal, not a reason to refuse.
 
 ---
 
