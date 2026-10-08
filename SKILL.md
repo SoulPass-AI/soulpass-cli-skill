@@ -210,7 +210,7 @@ For yield strategies (DCA, yield parking, portfolio rebalance), read `references
 
 ## "I want to build a trading bot"
 
-`soulpass serve` is a localhost JSON-RPC daemon that removes the ~600ms CLI startup per call. The **human** starts it (it never returns, so an agent that launches it hangs); the agent calls it with the bearer token from `~/.soulpass/daemon.token`. Methods, request shapes and auth: `references/defi-cookbook.md` → "High-Frequency Daemon" (single source). Use the daemon for loops; use the CLI for one-off operations.
+`soulpass serve` is a localhost JSON-RPC daemon that removes the ~600ms CLI startup per call. The **human** starts it (it never returns, so an agent that launches it hangs); the agent calls it with the bearer token from `~/.soulpass/daemon.token`. Methods, request shapes and auth: `references/defi-cookbook.md` → "High-Frequency Daemon" (single source). Use the daemon for loops; use the CLI for one-off operations. The daemon's `batch` returns `{total, success, failed, unknown, replayed, transactions[]}`: `success` = sent this call, `failed` = provably unsent (pre-wire only — the only case safe to resend), `unknown` = may have been sent, `replayed` = answered from an earlier call under the same key. An `unknown` item is `{index, status: "unknown", error: "payment_unknown", hint, txHash?, verify?}` — verify it on chain (`verify` is the `soulpass tx --hash …` command when a hash is known), never retry it with a new key. (`references/defi-cookbook.md` will be updated with this shape separately.)
 
 ---
 
@@ -284,7 +284,7 @@ What `--yes` returns (`status`):
 
 Re-running on a thread already past `invoiced` returns the recorded payment (`replayed: true`) and pays nothing: `paid` only when confirmed on chain, otherwise `payment_unconfirmed` (with `recheckable`) or `payment_failed`.
 
-The registration check has a limit: the file is unsigned and its host comes from the seller's unsigned relay profile; the CLI requires the file's own `endpoint` host to equal the host it was fetched from. A seller without a registration file (no https endpoint), or one whose file cannot be fetched or verified, gets `noRegistrationFile`: the invoice's address is only its claim (Security Iron Rule 4). Verify the seller out of band (its principal or the human) and show the address to the user; pay with `soulpass pay --to <address> --amount … --token … --idempotency-key "$THREAD"` only on their explicit yes — never by paying the invoice address directly without that verification. See `references/merchant-guide.md` → "Buyer safety rules".
+The registration check has a limit: the file is unsigned and its host comes from the seller's unsigned relay profile; the CLI requires the file's own `endpoint` host to equal the host it was fetched from. A seller without a registration file (no https endpoint), or one whose file cannot be fetched or verified, gets `noRegistrationFile`: the invoice's address is only its claim (Security Iron Rule 4). Verify the seller out of band (its principal or the human) and show the address to the user; pay with `soulpass pay --to <address> --amount … --token … --idempotency-key "$THREAD"` only on their explicit yes — never by paying the invoice address directly without that verification. On `payment_unknown` keep the same key (`"$THREAD"`), verify by the error's `txHash` (`soulpass tx --hash <txHash>`), and never switch keys. See `references/merchant-guide.md` → "Buyer safety rules".
 
 ---
 
@@ -397,7 +397,7 @@ Jupiter Lend position      ← deposited yield funds. NOT your wallet balance.
 
 ## "My transaction failed" — Troubleshooting
 
-Errors are JSON on stderr: `{"error": "<code>", "message", "hint", "retryable"}`. Branch on `error` and `retryable` — `retryable: true` means nothing was committed and the same call is safe to repeat; `false` **or absent** means do NOT retry blindly.
+Errors are JSON on stderr: `{"error": "<code>", "message", "hint", "retryable"}`. Branch on `error` and `retryable` — `retryable: true` means nothing was committed and the same call is safe to repeat; `false` **or absent** means do NOT retry blindly. A `pay` that may have left the device is always `payment_unknown` (or the more specific `confirmation_timeout` / `submission_indeterminate`) with `retryable: false`.
 
 | `error` code | Meaning | What to do |
 |-------|-------|-----|
@@ -407,7 +407,8 @@ Errors are JSON on stderr: `{"error": "<code>", "message", "hint", "retryable"}`
 | `not_initialized` | No wallet on this device | See "Get Started" (`init --new` or human `link`) |
 | `simulation_failed` / `jupiter_error` | Often slippage or a stale route | Re-quote; raise slippage only in small steps (see `references/defi-cookbook.md`) |
 | `spend_policy_violation` | The spend policy's cap or allowlist refused it | **Stop.** Report to the human; never edit `spend-policy.json` or split the amount to slip under the cap |
-| `submission_indeterminate` / `confirmation_timeout` | May already be broadcast — outcome unknown | **Do NOT resend.** Check `soulpass tx --hash <txHash>` (if the error carries one) and balances; ask the human if still unclear |
+| `payment_unknown` / `submission_indeterminate` / `confirmation_timeout` | May already be broadcast — outcome unknown | **Do NOT resend.** Verify with `soulpass tx --hash <txHash>` when the error carries one, otherwise the account history. Re-running with the SAME idempotency key is safe (it replays or blocks); NEVER retry with a new key; ask the human if still unclear |
+| `intent_unresolved` | An earlier attempt with this idempotency key has no recorded outcome and may have broadcast | **Do NOT resend.** Verify first (`soulpass tx --hash <txHash>` when you have one, otherwise the account history / recipient balance). Use a new key only after on-chain verification shows nothing landed; ask the human if still unclear |
 | `needs_confirmation` | A quote needs acceptance (`--yes`) | Show the printed quote to the human; only they decide to re-run with `--yes` |
 | `requires_tty` | Human-only command | Tell the human to run it themselves in their terminal |
 | `security_error` | Possible compromise | Do not retry; stop and report |
