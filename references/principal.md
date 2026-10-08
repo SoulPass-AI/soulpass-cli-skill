@@ -45,6 +45,7 @@ self-asserted and prove nothing; the principal record is the verifiable part.
 | `status: "imported"` | `--record`: the signed record verified for this agent and account, and its signer is the allowed signer; published | Nothing |
 | `status: "withdrawn"` | `--drop-principal`: removed from the relay profile and local state | Re-attest to restore |
 | error `not_found` | No key this wallet knows can sign: its owners are P-256 / passkey keys only and no passkey root is on file | Tell the user; the human links the wallet to their SoulPass passkey (`soulpass link`) so their iPhone can vouch for this agent. Until then this agent cannot carry a record |
+| error `not_found` ("the wallet account … is not on chain yet") | The record names an on-chain account, and this wallet's account does not exist yet | Tell the user: the account must be funded/activated first; `soulpass link` does not fix this |
 
 Signing an `unsigned` candidate is for the person or tool holding that key — never you:
 
@@ -94,10 +95,10 @@ sent to each controller at most once. Nothing is sent while your own record is m
 |---|---|---|---|
 | `preview` (error `needs_confirmation`) | non-zero | No `--yes`: payee, amount, token, chain, seller shown; nothing moved | Show the user; `--yes` only on their explicit yes |
 | `paid` | 0 | Confirmed on chain, receipt sent to the seller, controllers reported to | Done |
-| `payment_unconfirmed` | 0 | Broadcast, not yet confirmed | Re-run with `--yes` later: it re-checks the chain and sends the receipt once confirmed; never pays twice |
-| `payment_failed` | non-zero | The transaction failed on chain; this invoice's idempotency key is spent | Ask the seller for a new invoice, or pay manually with the user's yes. Never retry with a crafted key |
+| `payment_unconfirmed` | 0 | May have been broadcast, not confirmed. `recheckable: true`: pending, not yet found, or unreadable. `recheckable: false`: no transaction id, or landed without the ordered transfer | `true`: re-run with `--yes` later — it re-checks the chain and sends the receipt once confirmed; never pays twice. `false`: a re-run cannot settle it — verify on chain from the account history first (never pay by hand first), then ask the seller for a new invoice |
+| `payment_failed` | non-zero | The transaction failed on chain, or (Solana) the chain still does not know it 5 minutes after it began (blockhash expired); this invoice's idempotency key is spent | Verify by the signature in the account history, then ask the seller for a new invoice, or pay manually with the user's yes. Never retry with a crafted key |
 | `paid_receipt_failed` | non-zero | Paid (txHash on stdout), the receipt could not be sent | Re-run with `--yes`: the payment is replayed, not repeated, and the receipt is sent |
-| `payment_error` | non-zero | The pay runner refused or failed with no payment evidence | Read the error; do not assume funds moved |
+| `payment_error` | non-zero | Refused or failed before any payment was attempted; a broadcast payment is never reported here | Read the error |
 
 Checks before anything is paid: the invoice is the latest message of an `invoiced` thread whose offer you
 accepted; its amount and currency equal that offer's; the method is `crypto/instant`; the recipient is
@@ -106,11 +107,12 @@ token configuration for the invoice's symbol:
 
 - EVM pays only tokens in the app's token config (`unlistedToken` otherwise), and an invoice
   `settlementDetails.tokenAddress` must equal the listed contract. Solana pays only the whitelisted mint
-  (native SOL by symbol).
+  (native SOL by symbol); a given `tokenAddress` must equal it — for SOL, the wSOL mint
+  `So11111111111111111111111111111111111111112` — else `tokenAddressMismatch`.
 - The idempotency key is `invoice-<messageId>`; the `invoice-` prefix is reserved — a manual
   `--idempotency-key invoice-…` is refused.
 - A re-run on a thread already past `invoiced` mirrors the recorded payment (`replayed: true`): `paid` only
-  when confirmed on chain, otherwise `payment_unconfirmed`; a reverted payment stays `payment_failed`.
+  when confirmed on chain, otherwise `payment_unconfirmed` (with `recheckable`) or `payment_failed`.
 
 ### The registration check has a limit
 
@@ -119,8 +121,8 @@ unsigned relay profile. The CLI therefore requires the file's own `endpoint` hos
 fetched from, so only TLS on that domain ties the file to it. The payee itself always comes from the
 seller's signed invoice; the file can only confirm or refuse it.
 
-A seller whose profile has no https endpoint (SoulPass sellers today publish no registration file) gets
-`noRegistrationFile`. Then the invoice's address is only the seller's claim: verify the seller out of band
+A seller without a registration file (no https endpoint in its profile), or whose file cannot be fetched or
+verified, gets `noRegistrationFile`. Then the invoice's address is only the seller's claim: verify the seller out of band
 (through its principal or the human) before paying manually with the user's explicit yes, and never bypass
 the check by paying the invoice's address directly without that verification.
 

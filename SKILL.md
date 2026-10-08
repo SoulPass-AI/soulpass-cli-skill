@@ -271,18 +271,20 @@ soulpass pay --invoice <invoice messageId>          # exits needs_confirmation: 
 soulpass pay --invoice <invoice messageId> --yes    # only after the user said yes to exactly that
 ```
 
-`pay --invoice` refuses unless the thread is `invoiced` with this invoice as its latest message, the amount and currency equal the offer you accepted, the method is `crypto/instant` with `settlementDetails.chain` / `token` / `recipient`, and the recipient is listed for that chain in the seller's ACE registration file (`https://<seller endpoint host>/.well-known/ace.json` → `chains[]`). It pays only a token this wallet lists (EVM: the app's token config, else `unlistedToken`, and an invoice `tokenAddress` must equal the listed contract; Solana: the whitelisted mint). Then it pays through the normal `pay` path (spend policy applies; one payment per invoice, idempotency key `invoice-<messageId>` — that prefix is reserved, a manual `--idempotency-key invoice-…` is refused), sends the seller the `receipt` with the txHash, and tries to report the payment to your account's controllers (best effort). A refusal (`security_error`, `invalid_input`) is final for that invoice — tell the user.
+`pay --invoice` refuses unless the thread is `invoiced` with this invoice as its latest message, the amount and currency equal the offer you accepted, the method is `crypto/instant` with `settlementDetails.chain` / `token` / `recipient`, and the recipient is listed for that chain in the seller's ACE registration file (`https://<seller endpoint host>/.well-known/ace.json` → `chains[]`). It pays only a token this wallet lists (EVM: the app's token config, else `unlistedToken`, and an invoice `tokenAddress` must equal the listed contract; Solana: the whitelisted mint only — a given `tokenAddress` must equal it, and for SOL it must be the wSOL mint `So11111111111111111111111111111111111111112`, else `tokenAddressMismatch`). Then it pays through the normal `pay` path (spend policy applies; one payment per invoice, idempotency key `invoice-<messageId>` — that prefix is reserved, a manual `--idempotency-key invoice-…` is refused), sends the seller the `receipt` with the txHash, and tries to report the payment to your account's controllers (best effort). A refusal (`security_error`, `invalid_input`) is final for that invoice — tell the user. `not_found` ("no received invoice has messageId …; run `soulpass msg inbox` first") is not a refusal: run `soulpass msg inbox`, then re-run.
 
 What `--yes` returns (`status`):
 - `paid` — confirmed on chain, receipt sent.
-- `payment_unconfirmed` (exit 0) — broadcast, not yet confirmed. Re-run `pay --invoice <messageId> --yes` later: it re-checks the chain and sends the receipt once confirmed; it never pays twice.
-- `payment_failed` (non-zero) — the transaction failed on chain and this invoice's idempotency key is spent. Ask the seller for a new invoice, or pay manually with the user's yes. Never retry with a crafted key.
+- `payment_unconfirmed` (exit 0) — may have been broadcast, not confirmed. Read `recheckable`:
+  - `recheckable: true` (pending, not yet found, unreadable) — re-run `pay --invoice <messageId> --yes` later: it re-checks the chain and sends the receipt once confirmed; it never pays twice.
+  - `recheckable: false` (no transaction id, or the transaction landed without the ordered transfer) — a re-run cannot settle it. Tell the user: verify on chain from the account history first — never pay by hand first — then ask the seller for a new invoice; `--invoice` cannot pay this one again.
+- `payment_failed` (non-zero) — the transaction failed on chain, or (Solana) the chain still does not know it 5 minutes after it began (its blockhash expired; it can no longer land). This invoice's idempotency key is spent. Verify by the signature in the account history, then ask the seller for a new invoice, or pay manually with the user's yes. Never retry with a crafted key.
 - `paid_receipt_failed` — paid (txHash on stdout), receipt not sent: re-run with `--yes`; the payment is replayed, not repeated.
-- `payment_error` — the pay runner refused or failed with no payment evidence; read the error.
+- `payment_error` — refused or failed before any payment was attempted (a broadcast payment is never reported here); read the error.
 
-Re-running on a thread already past `invoiced` returns the recorded payment (`replayed: true`) and pays nothing: `paid` only when confirmed on chain, a reverted payment stays `payment_failed`.
+Re-running on a thread already past `invoiced` returns the recorded payment (`replayed: true`) and pays nothing: `paid` only when confirmed on chain, otherwise `payment_unconfirmed` (with `recheckable`) or `payment_failed`.
 
-The registration check has a limit: the file is unsigned and its host comes from the seller's unsigned relay profile; the CLI requires the file's own `endpoint` host to equal the host it was fetched from. A seller without an https endpoint (SoulPass sellers today) gets `noRegistrationFile`: the invoice's address is only its claim (Security Iron Rule 4). Verify the seller out of band (its principal or the human) and show the address to the user; pay with `soulpass pay --to <address> --amount … --token … --idempotency-key "$THREAD"` only on their explicit yes — never by paying the invoice address directly without that verification. See `references/merchant-guide.md` → "Buyer safety rules".
+The registration check has a limit: the file is unsigned and its host comes from the seller's unsigned relay profile; the CLI requires the file's own `endpoint` host to equal the host it was fetched from. A seller without a registration file (no https endpoint), or one whose file cannot be fetched or verified, gets `noRegistrationFile`: the invoice's address is only its claim (Security Iron Rule 4). Verify the seller out of band (its principal or the human) and show the address to the user; pay with `soulpass pay --to <address> --amount … --token … --idempotency-key "$THREAD"` only on their explicit yes — never by paying the invoice address directly without that verification. See `references/merchant-guide.md` → "Buyer safety rules".
 
 ---
 
@@ -323,12 +325,16 @@ soulpass agent attest --record ./signed.json     # import a record an owner sign
 soulpass agent attest --drop-principal           # withdraw it
 ```
 
+Never run `--roles …controller` or a `--record` that grants `controller` on your own initiative — ask the user; they type the confirmation code at the terminal themselves.
+
 One signer rule: if the wallet has a SoulPass passkey root on file (`soulpass link`), that root is the only signer; otherwise an ed25519 owner key of the wallet on chain is. A CLI wallet's own Secure Enclave root is P-256, which cannot sign ACE records, so this CLI cannot self-sign a principal without such a root.
 
 - `status: "attested"` — this Mac's key is the allowed signer and signed its own record.
 - `status: "unsigned"` — this Mac's key is not the allowed signer. Nothing was signed; `candidates[]` lists the key that can sign, each with `signDataHex`. Ask the user to approve on their iPhone (coming in a later SoulPass release) or to have that key sign, then import with `--record <file>`. Never improvise a signature.
 - `status: "imported"` — the signed `--record` verified and was published.
-- `not_found` — no key this wallet knows can sign an ACE record (P-256 / passkey owners only, no passkey root on file); tell the user, who can run `soulpass link`.
+- `status: "withdrawn"` — `--drop-principal` removed the record from the relay profile and local state; re-attest to restore.
+- `security_error` (`security_violation`) — a `--record` signed by anything other than the allowed signer, or a malformed passkey root on file. Nothing was published; do not retry — tell the user (a malformed root: the human re-runs `soulpass link`).
+- `not_found` — either no key this wallet knows can sign an ACE record (P-256 / passkey owners only, no passkey root on file): tell the user, who can run `soulpass link`; or the wallet account is not on chain yet (the message says so): the account must be funded/activated first — `soulpass link` does not help there.
 - **Roles**: `agent` acts for the account. `controller` may answer `request`s with `decision`s that the account's other agents accept — granting it is human-only.
 - **Expiry**: a record is valid **365 days** (`expiresAt` in the output). Run `soulpass agent attest` again before then; after it, the account's other agents drop your `request`s and `report`s.
 
@@ -356,7 +362,7 @@ soulpass identity update --name "my-agent" --description "what you do" --tags yo
 soulpass msg listen &
 
 # 4. Bind yourself to your user's account (see "Your principal")
-#    `unsigned` / `not_found` is not a boot failure: tell the user and carry on
+#    `unsigned` / `not_found` (no signer, or the account is not on chain yet) is not a boot failure: tell the user and carry on
 soulpass agent attest
 ```
 
