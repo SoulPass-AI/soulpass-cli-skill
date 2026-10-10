@@ -14,47 +14,54 @@ AI agent skill for **Solana trading, DeFi, and agent-to-agent infrastructure** w
 - **DeFi yield** — earn interest via Jupiter Lend on idle USDC/SOL
 - **Trading bots** — JSON-RPC daemon for low-latency automated strategies
 
-### Agent Identity & Communication
-- **On-chain identity (ERC-8004)** — discoverable agent identity with name, capabilities, and reputation
-- **Agent-to-agent messaging** — encrypted communication between agents with signature verification
+### Agent Identity & Communication (ACE)
+- **ACE identity** — a verifiable agent identity (`ace:sha256:…`) on the ACE relay, with an optional on-chain identity NFT (Metaplex Agent Registry, ERC-8004-format registration file)
+- **Private agent-to-agent messaging** — hybrid post-quantum encryption (X-Wing) on every frame, plus a fresh MLS session per delivery for forward secrecy; peers are admitted explicitly and mutually by the human
 - **Service discovery** — find other agents by capability, broadcast your own needs
-- **Agent commerce** — sell services to other agents via ACE Protocol, with on-chain payment verification
+- **Agent commerce** — sell services to other agents over ACE (Agent Commerce Engine, an open protocol); verify every payment on chain before delivering
+- **Agent wallet** — the user's coding and personal agents can request payments; the user pairs them in SoulPass and confirms each payment on iPhone, and the agent gets a digest-bound payment receipt
+
+SoulPass is an ordinary ACE agent: it has no built-in authority over other agents. Agents that want to message or request payments from SoulPass use the [ACE skill](https://github.com/aceprotocol/ace-skill).
 
 ### Security
-- **Hardware security** — signing keys live in Apple Secure Enclave, physically impossible to extract
+- **Hardware-rooted keys** — the wallet's root key is generated in the Apple Secure Enclave and cannot be exported; no seed phrase, no `.env` key file
+- **Guardrails outside the prompt** — CLI spend policy (per-transaction caps, recipient allowlist) is enforced before signing; admission, payment authority and owner-key ceremonies are human-only
 
 ## Quick start
 
 ```bash
 # Install
-brew tap soulpassai/soulpass && brew install soulpass
+brew tap SoulPass-AI/soulpass && brew install soulpass
 
 # Initialize wallet (brand-new account; if you already have one, run `soulpass link` instead)
 soulpass init --new
 
 # Start trading
-soulpass swap --from USDC --to SOL --amount 100
+soulpass spot --sell USDC --buy SOL --amount 100
 ```
 
 ## Why hardware security matters
 
-In 2025, Solana users lost **$90M+ to phishing** — malicious npm packages stole private keys from `.env` files. SoulPass keys are born in the chip and never leave.
+In 2025, Solana users lost **$90M+ to phishing** — malicious npm packages stole private keys from `.env` files. SoulPass has no key file to steal: its root key is born in the Secure Enclave and cannot be exported.
 
 | Approach | Security | Can run autonomously? |
 |----------|----------|-----------------------|
 | `.env` private key | None — plaintext | Yes |
 | Browser wallet | Software encryption | No — human approves |
 | MPC wallet | Provider holds shard | Yes — centralized trust |
-| **SoulPass** | **Hardware chip** | **Yes — zero trust** |
+| **SoulPass** | **Hardware-rooted key (Secure Enclave)** | **Yes — within a human-set spend policy** |
 
-## Install as Claude Code skill
+## Install as an agent skill
 
 ```bash
-claude install-skill soulpassai/soulpass-skill
+npx skills add SoulPass-AI/soulpass-cli-skill
 ```
+
+Or clone https://github.com/SoulPass-AI/soulpass-cli-skill into your agent's skills directory (e.g. `~/.claude/skills/soulpass`).
 
 ## Links
 
 - [SoulPass website](https://soulpass.ai)
 - [ClawHub listing](https://clawhub.ai/skills/soulpass)
-- [CLI documentation](https://github.com/soulpassai/soulpass-cli)
+- [CLI releases](https://github.com/SoulPass-AI/soulpass)
+- [ACE protocol](https://aceprotocol.org)

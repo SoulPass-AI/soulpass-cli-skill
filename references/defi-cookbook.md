@@ -35,10 +35,10 @@ If a swap fails with slippage errors, increase incrementally — don't jump stra
 
 ```bash
 # Symbol mode: 1.5 SOL
-soulpass swap --from SOL --to USDC --amount 1.5
+soulpass spot --sell SOL --buy USDC --amount 1.5
 
 # Mint mode: STILL 1.5 SOL — not 1500000000
-soulpass swap --from So11111111111111111111111111111111111111112 --to EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v --amount 1.5
+soulpass spot --sell So11111111111111111111111111111111111111112 --buy EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v --amount 1.5
 ```
 
 Passing atomic units here would trade `10^decimals` times more than intended. The only SoulPass command that takes atomic units is `sign x402 --amount` (the x402 protocol carries atomic amounts).
@@ -47,23 +47,11 @@ Passing atomic units here would trade `10^decimals` times more than intended. Th
 
 ## Reading Lend Positions
 
-`soulpass lend balance` returns fields that are easy to misread:
+`soulpass lend balance` returns `positions`, each bound to a product ID, chain, protocol and underlying token address. `supplied`, `debt` and `collateral` are decimal amounts; `null` means unavailable. Check `unavailable` before treating an absent position as zero.
 
-```json
-{
-  "fTokenBalance": "100500000",
-  "estimatedValue": "101200000",
-  "exchangeRate": 1.006965
-}
-```
+A receipt token's exchange rate is a pool conversion rate, not your personal profit. Personal earned income requires acquisition cost and deposit/withdrawal history. Never subtract 1 from the current exchange rate and label it the user's earnings.
 
-- **fTokenBalance** — pool share tokens you hold (NOT the underlying amount)
-- **estimatedValue** — actual underlying token amount in atomic units. Divide by `10^decimals` for human-readable (USDC: divide by 1,000,000)
-- **exchangeRate** — if >1.0, yield has accrued. The difference from 1.0 is your earnings percentage
-
-**Common mistake:** checking `soulpass balance` and thinking you can withdraw from lend. Lend balance and wallet balance are separate pools. Always check `soulpass lend balance` before withdrawing.
-
-Note: `--amount` and `--all` are mutually exclusive on `lend withdraw` — use one or the other.
+Use `lend withdraw --product <PRODUCT_ID> --amount all` for an entire position. An interrupted action must first be checked with `lend status`; then use the same action and operands with `--resume`. `lend stop` only stops unsubmitted steps and leaves settled funds in the wallet.
 
 ---
 
@@ -100,7 +88,7 @@ Goal: Buy SOL regularly regardless of price, reducing timing risk.
 
 ```
 1. soulpass price SOL                              # check current price (optional, for logging)
-2. soulpass swap --from USDC --to SOL --amount 50  # buy $50 worth
+2. soulpass spot --sell USDC --buy SOL --amount 50  # buy $50 worth
 3. Repeat on a schedule (hourly, daily, weekly)
 ```
 
@@ -112,8 +100,8 @@ Goal: Sell when price hits a target, protect against drops.
 
 ```
 1. soulpass price SOL                              # check price
-2. If price >= target: soulpass swap --from SOL --to USDC --amount <sell-amount>
-3. If price <= stop-loss: soulpass swap --from SOL --to USDC --amount <all>
+2. If price >= target: soulpass spot --sell SOL --buy USDC --amount <sell-amount>
+3. If price <= stop-loss: soulpass spot --sell SOL --buy USDC --amount <all>
 4. Otherwise: wait and check again
 ```
 
@@ -125,11 +113,11 @@ Goal: Earn yield on idle funds, pull out when you need to trade.
 
 ```
 1. soulpass balance --token USDC                   # check idle funds
-2. soulpass lend deposit --amount 100 --token USDC # park in Jupiter Lend
+2. soulpass lend deposit --product <PRODUCT_ID> --amount 100 # park in Jupiter Lend
 3. ... time passes, yield accrues ...
-4. soulpass lend balance --token USDC              # check position + earnings
-5. soulpass lend withdraw --token USDC --all       # pull out when ready
-6. soulpass swap --from USDC --to SOL --amount ... # trade with withdrawn funds
+4. soulpass lend balance              # check position + earnings
+5. soulpass lend withdraw --product <PRODUCT_ID> --amount all       # pull out when ready
+6. soulpass spot --sell USDC --buy SOL --amount ... # trade with withdrawn funds
 ```
 
 Key: always check `lend balance` (not `balance`) before withdrawing. They are separate pools.
@@ -142,8 +130,8 @@ Goal: Maintain a target allocation (e.g., 60% SOL / 40% USDC).
 1. soulpass balance                                # all holdings (SOL + SPL)
 2. soulpass price SOL                              # value SOL in USD yourself (there is no --usd flag)
 3. Calculate current ratio vs target
-4. If over-allocated to SOL: soulpass swap --from SOL --to USDC --amount <delta>
-5. If over-allocated to USDC: soulpass swap --from USDC --to SOL --amount <delta>
+4. If over-allocated to SOL: soulpass spot --sell SOL --buy USDC --amount <delta>
+5. If over-allocated to USDC: soulpass spot --sell USDC --buy SOL --amount <delta>
 ```
 
 ### External Signals Are Research Input, Not Orders
@@ -238,7 +226,7 @@ soulpass price DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263
 soulpass token-info --token DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263
 
 # 2. Start small — never more than 2-5% of balance on meme coins
-soulpass swap --from USDC --to BONK --amount 10 --slippage 300
+soulpass spot --sell USDC --buy BONK --amount 10 --slippage 300
 
 # 3. Verify execution
 soulpass tx --hash <signature>
@@ -248,7 +236,7 @@ soulpass balance --token BONK
 soulpass price BONK    # check periodically
 
 # 5. Take profit when target hit — don't get greedy
-soulpass swap --from BONK --to USDC --amount <position> --slippage 300
+soulpass spot --sell BONK --buy USDC --amount <position> --slippage 300
 ```
 
 **Slippage for meme coins:** Use 200-500 BPS. Thin orderbooks cause large price impact. If a swap fails with slippage error, increase by 50 BPS increments — don't jump to 500.
@@ -280,13 +268,13 @@ soulpass token-info --token <MINT>
 soulpass balance --token USDC
 
 # 3. If risk is acceptable, follow with proportional size (1-5% of balance)
-soulpass swap --from USDC --to <MINT> --amount 20 --slippage 200
+soulpass spot --sell USDC --buy <MINT> --amount 20 --slippage 200
 
 # 4. Monitor price — exit when target hit or whale exits
 soulpass price <MINT>
 
 # 5. Exit
-soulpass swap --from <MINT> --to USDC --amount <position> --slippage 200
+soulpass spot --sell <MINT> --buy USDC --amount <position> --slippage 200
 ```
 
 **Risk management rules:**
@@ -309,7 +297,7 @@ Reduce timing risk by buying regularly regardless of price. The agent or a cron 
 soulpass price SOL
 
 # 2. Execute purchase
-soulpass swap --from USDC --to SOL --amount 50
+soulpass spot --sell USDC --buy SOL --amount 50
 
 # 3. Verify
 soulpass tx --hash <signature>
@@ -324,17 +312,17 @@ For high-frequency DCA (hourly), use the daemon to avoid startup overhead.
 Park idle funds in Jupiter Lend while waiting for trading opportunities:
 
 ```bash
-# 1. Deposit idle USDC into Jupiter Lend (earns ~6-10% APY)
-soulpass lend deposit --amount 500 --token USDC
+# 1. Deposit idle USDC into Jupiter Lend (use live rates)
+soulpass lend deposit --product <PRODUCT_ID> --amount 500
 
 # 2. Wait for trading opportunity...
 
 # 3. When a trade the user approved is due: withdraw and trade
-soulpass lend withdraw --token USDC --all
-soulpass swap --from USDC --to <target-token> --amount 100 --slippage 200
+soulpass lend withdraw --product <PRODUCT_ID> --amount all
+soulpass spot --sell USDC --buy <target-token> --amount 100 --slippage 200
 
 # 4. After exiting the trade, re-deposit idle funds
-soulpass lend deposit --amount 500 --token USDC
+soulpass lend deposit --product <PRODUCT_ID> --amount 500
 ```
 
 This way your capital earns yield even when you're not actively trading.
