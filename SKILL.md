@@ -32,7 +32,7 @@ metadata:
 
 # SoulPass — Hardware-Secured Solana Trading Terminal for AI Agents
 
-You have a hardware-secured wallet on Solana with **built-in Jupiter DEX trading and lending**. The wallet's root signing key is a P-256 key generated inside the Apple Secure Enclave and cannot be exported. Keys that need other curves (the ACE ed25519 identity, EVM secp256k1) are derived from it on demand and held only briefly in protected memory. No seed phrase, no `.env` private key.
+You have a hardware-secured wallet on Solana with **built-in Jupiter DEX trading and lending**. The wallet's root signing key is a P-256 key generated inside the Apple Secure Enclave and cannot be exported. The EVM secp256k1 wallet key is derived on demand and held only briefly in protected memory. ACE has an independent Secure Enclave ML-DSA root and delegated signing/encryption keys; it is not derived from the wallet key. No seed phrase, no `.env` private key.
 
 In 2025, Solana users lost over **$90 million to phishing** — and malicious npm packages like `solana-transaction-toolkit` were caught stealing private keys directly from `.env` files. SoulPass has no private-key file for such a package to steal.
 
@@ -283,13 +283,15 @@ soulpass msg listen
 soulpass msg send --to <peer-id> --type ace:text:1 --body "Hello"
 soulpass msg send --to <peer-id> --type ace:commerce:rfq:1 --thread <deal-id> --body '{"need":"2h A100 GPU"}'
 soulpass msg inbox
+# After safely consuming an exact message:
+soulpass msg ack --from PEER_ACE_ID --message-id MESSAGE_UUID
 soulpass msg outbox
 ```
 
 Both endpoint runtimes must be online for the handshake, bounded by 120 seconds. `sent` means
 an authenticated receipt of durable endpoint acceptance. Relay storage is not that receipt.
 Keep an uncertain send's outbox request ID; do not repeat a new `msg send` to hide uncertainty.
-Use `msg outbox resign <requestId>` when explicitly renewing an expired pending envelope, or
+Use `msg outbox retry <requestId>` for the exact pending envelope; expired envelopes require explicit replacement. Use
 `abandon` to discard it. A delivered message cannot be recalled. Only one receiver may hold
 a wallet's receive lock. Signed inner envelopes are limited to 40,000 bytes.
 
@@ -413,7 +415,7 @@ Errors are JSON on stderr: `{"error": "<code>", "message", "hint", "retryable"}`
 | `requires_tty` | Human-only command | Tell the human to run it themselves in their terminal |
 | `security_error` | Possible compromise | Do not retry; stop and report |
 | `messaging_error` with `delivery_peer_disabled` | This Mac has not admitted that peer | Ask the human to compare the full ACE ID and complete the signed-invitation contact flow; keep both runtimes receiving |
-| `relay_error` with `delivery_expired` ("No durable peer receipt") | The handshake did not finish within 120 s — usually the peer is offline or has not admitted you | The send stays pending in `soulpass msg outbox`. Once the peer is online, retry the SAME operation (identical `msg send`, or `msg outbox resign <requestId>`) — never a new message |
+| `relay_error` with `delivery_expired` ("No durable peer receipt") | The handshake did not finish within 120 s — usually the peer is offline or has not admitted you | The send stays pending in `soulpass msg outbox`. Once the peer is online, retry the SAME operation (`msg send` with the same `--request-id`, or `msg outbox retry <requestId>`) — never a new message |
 | `messaging_error` "The recipient rejected the message: `<code>`" | The receiver permanently refused it (e.g. `wrong_principal` from a host that filters principal messages) | Not retried automatically. Tell the user; `msg outbox abandon <requestId>` if it should be dropped |
 | `messaging_error` mentioning another listener | Another process (`msg listen`, `agent payments serve`) holds this wallet's inbox | Use that receiver, or stop it first; one receiver per wallet |
 
@@ -458,3 +460,11 @@ Defaults to **production** (Solana Mainnet). Set `SOULPASS_ENV=test` for Devnet.
 | Pairing external agents, the spec-12 `pay` request, payment receipts, `agent payments` executor | `references/agent-wallet.md` |
 | Your principal record, `agent attest` outputs, principal messages, controller reports | `references/principal.md` |
 | Full command details and parameters | `soulpass --help` or `soulpass schema` |
+
+### Local extension and inbox policy
+
+`msg profiles --install manifest.json` installs a local ACE manifest v1; `msg profiles`
+shows advertised profiles. Received schemas never install themselves or authorize effects.
+`msg inbox` is a repeatable read; `msg ack` is idempotent consumption. Unread messages are
+not rotated away. On `receiver_capacity`, retain the same operation ID and honor the
+30-second retry hint. Use canonical message types and exact schema digests.
