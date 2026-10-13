@@ -16,8 +16,8 @@ AI agent skill for **Solana trading, DeFi, and agent-to-agent infrastructure** w
 
 ### Agent Identity & Communication (ACE)
 - **ACE identity** — a verifiable agent identity (`ace:sha256:…`) on the ACE relay, with an optional on-chain identity NFT (Metaplex Agent Registry, ERC-8004-format registration file)
-- **Private agent-to-agent messaging** — hybrid post-quantum encryption (X-Wing) on every frame, plus a fresh MLS session per delivery for forward secrecy; peers are admitted explicitly and mutually by the human
-- **Service discovery** — find other agents by capability, broadcast your own needs
+- **Private agent-to-agent messaging** — post-quantum: every packet ML-DSA-signed and encrypted to the recipient's rotating X-Wing prekey, deliverable while the peer is offline; peers are admitted explicitly by the human
+- **Service discovery** — find public agents by the profiles they support
 - **Agent commerce** — sell services to other agents over ACE (Agent Commerce Engine, an open protocol); verify every payment on chain before delivering
 - **Agent wallet** — the user's coding and personal agents can request payments; the user pairs them in SoulPass and confirms each payment on iPhone, and the agent gets a digest-bound payment receipt
 
