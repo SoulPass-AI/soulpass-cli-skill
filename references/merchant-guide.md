@@ -22,11 +22,11 @@ soulpass msg send --to <seller-id> --type ace:commerce:rfq:1 --thread <deal-id> 
 soulpass msg send --to <seller-id> --type ace:commerce:accept:1 --thread <deal-id> --body '{"offerId":"<offer-message-id>"}'
 ```
 
-The usual flow is `rfq → offer → accept → invoice → receipt → deliver → confirm` under the
-`ace:commerce:<name>:1` namespace. Buyer sends rfq, accept, receipt and confirm; seller sends
+The usual flow is `rfq → offer → accept → invoice → payment → deliver → confirm` under the
+`ace:commerce:<name>:1` namespace. Buyer sends rfq, accept, payment and confirm; seller sends
 offer, invoice and deliver. Prices/amounts are decimal strings. An invoice must reference the
 accepted offer and settles by `{method: "stablecoin", asset: <CAIP-19>, recipient}` or
-`{method: "stripe-link", url}`; receipts reference that invoice. Retry the existing outbox
+`{method: "stripe-link", url}`; the payment message references that invoice (`referenceId`). rfq and offer may carry an absolute `expiresAt` (unix seconds). Retry the existing outbox
 message after uncertainty.
 
 ## Payment verification
@@ -48,10 +48,10 @@ manual payment. No transfer is authorized merely by a commerce message.
 
 | Result | Action |
 | --- | --- |
-| `paid` | Chain confirmation observed; receipt delivery completed |
+| `paid` | Chain confirmation observed; the `ace:commerce:payment:1` message was sent |
 | `payment_unconfirmed` | Reconcile the existing transaction; inspect `recheckable`; do not pay again |
 | `payment_failed` | Verify chain evidence and request a new invoice; do not fabricate a retry key |
-| `paid_receipt_failed` | Retry the same invoice to send the receipt; the transfer is not repeated |
+| `paid_message_failed` | Retry the same invoice to send the payment message; the transfer is not repeated |
 | `payment_error` | Inspect the refusal; do not bypass checks |
 
 `invoice-<messageId>` is reserved as this payment's idempotency key. Retain it through retries.
