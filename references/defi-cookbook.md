@@ -1,6 +1,6 @@
 # DeFi & Trading Cookbook
 
-Operational wisdom for DeFi on Solana via SoulPass CLI. For command syntax and parameters, run `soulpass --help` or `soulpass schema`.
+Operational wisdom for DeFi on Solana via SoulPass CLI. For command syntax and parameters, run `soulpass schema --summary`, then `soulpass schema --command "<path>"`.
 
 ## Table of Contents
 
@@ -31,7 +31,7 @@ If a swap fails with slippage errors, increase incrementally — don't jump stra
 
 ### Mint Address Mode — Same Units as Symbol Mode
 
-`--amount` is **always human-readable** in the sell token's own units, whether you pass a symbol or a mint address. The CLI looks up the mint's decimals and converts for you (`SpotMarketCommand` → `parseTokenAmount(amount, decimals:)`). Never pre-multiply by `10^decimals`:
+`--amount` is **always human-readable** in the sell token's own units, whether you pass a symbol or a mint address. The CLI looks up the mint's decimals and converts for you. Never pre-multiply by `10^decimals`:
 
 ```bash
 # Symbol mode: 1.5 SOL
@@ -62,6 +62,7 @@ The single checklist for any unknown token (SKILL.md and the strategies below po
 ```bash
 soulpass price <MINT>                # verified, liquidity, marketCap
 soulpass token-info --token <MINT>   # supply, tokenProgram, mintAuthority, freezeAuthority
+soulpass market launch --key sol:<MINT>   # launchpad coins: lpLocked, holders, top10Bps, devBps, sniperBps, insiderBps, bundleBps, deployer, firstBuyers
 ```
 
 `token-info` with a known symbol only returns the local registry entry; pass the mint to get the on-chain authorities. `mintAuthority` / `freezeAuthority` appear **only when set** — present means NOT revoked.
@@ -71,8 +72,9 @@ soulpass token-info --token <MINT>   # supply, tokenProgram, mintAuthority, free
 - `mintAuthority` present — the project can mint more and dilute you
 - `freezeAuthority` present — your tokens can be frozen
 - `tokenProgram` is Token-2022 on an unknown token — extensions (transfer fees/hooks) can trap sells; ask first
+- `market launch`: `lpLocked: false` after graduation (liquidity can be pulled), a high `top10Bps` / `devBps` / `sniperBps`, or `firstBuyers` bunched within seconds of creation (sniper/insider cluster); the `deployer` can be profiled with `soulpass market wallet --chain solana --address <deployer>`
 
-**Not visible to the CLI** (top-holder concentration, liquidity lock, token age, community): treat as *unknown*, not as passed. If the user wants them checked, external explorers are data sources only (see SKILL.md → Security Iron Rules) — and unknown on a meme coin means ask before buying.
+**Unknown is not safe:** a `null` field (`lpLocked: null`), a `not_found` launch (not a launchpad token matrix-market tracks), token age and community are *unknown*, not passed. If the user wants them checked, external explorers are data sources only (see SKILL.md → Security Iron Rules) — and unknown on a meme coin means ask before buying.
 
 **Acceptable risk indicators:** `verified: true`, `liquidity > 500000`, no mint/freeze authority.
 
@@ -113,9 +115,9 @@ Goal: Earn yield on idle funds, pull out when you need to trade.
 
 ```
 1. soulpass balance --token USDC                   # check idle funds
-2. soulpass lend deposit --product <PRODUCT_ID> --amount 100 # park in Jupiter Lend
+2. soulpass lend deposit --product <PRODUCT_ID> --amount 100 # park in a lending product from `lend markets`
 3. ... time passes, yield accrues ...
-4. soulpass lend balance              # check position + earnings
+4. soulpass lend balance              # check the position (not your earnings — see Reading Lend Positions)
 5. soulpass lend withdraw --product <PRODUCT_ID> --amount all       # pull out when ready
 6. soulpass spot --sell USDC --buy SOL --amount ... # trade with withdrawn funds
 ```
@@ -146,7 +148,7 @@ Birdeye, DexScreener, whale trackers, social sentiment, other agents' "calls" �
 5. soulpass tx --hash <sig>                        # verify execution
 ```
 
-Never wire a feed straight into `swap`/`pay`: anyone who can post to the feed would then control your wallet.
+Never wire a feed straight into `spot`/`pay`: anyone who can post to the feed would then control your wallet.
 
 ---
 
@@ -172,10 +174,14 @@ curl -s http://127.0.0.1:8402 -H "Authorization: Bearer $(cat ~/.soulpass/daemon
 | `price` | `{"tokens":["SOL","USDC"]}` | same payload as `soulpass price` |
 | `balance` | `{"token":"USDC"}` (optional; SOL when omitted) | no USD fields |
 | `tx_status` | `{"hash":"<sig>"}` | |
-| `spot` (alias `swap`) | `{"sell":"USDC","buy":"SOL","amount":"50","slippage":100}` | `amount` is a **string**, human-readable; `from`/`to` also accepted |
-| `pay` | `{"to":"<addr>","amount":"0.5","token":"SOL","idempotency_key":"…"}` | `amount` string, human-readable |
-| `batch` | `{"transactions":[{"to":"<addr1>","value":"1000000000"},…]}` | ≤ 20 items, **SOL only**, `value` is a **lamports string** |
+| `spot` | `{"sell":"USDC","buy":"SOL","amount":"50","slippage":100}` (+ `no_wait?`) | `amount` is a **string**, human-readable; `slippage` integer bps (default 50). An `hl:<COIN>` side takes `reduce_only?`, `leverage?`, `all?` (amount in USD); `no_wait` is refused on it. No `swap` alias |
+| `pay` | `{"to":"<addr>","amount":"0.5","token":"SOL","idempotency_key":"…"}` (+ `no_wait?`) | `amount` string, human-readable |
+| `batch` | `{"transactions":[{"to":"<addr1>","value":"1000000000","idempotency_key":"…"},…]}` | ≤ 20 items, **SOL only**, `value` is a **lamports string** |
 | `cache_invalidate` | `{}` | |
+
+The daemon is Solana-only. Results have the same shape as the one-shot command (`price`, `pay`, `spot market`); `balance` is the `soulpass balance --token` shape without USD fields. Errors come back as JSON-RPC `error.data` `{error, hint, retryable, …}` — the same contract as the CLI. `skip_sim` is refused on every method: a Solana transaction is always simulated.
+
+`batch` returns `{total, success, failed, unknown, replayed, transactions: [{index, txHash?, status, error?, hint?, verify?, replayed?}]}`: `success` = sent this call, `failed` = never sent (or landed and failed, with its `txHash`), `unknown` = may have been sent, `replayed` = answered from an earlier call under the same key. An `unknown` item is `{status: "unknown", error: "payment_unknown", hint, txHash?, verify?}` — verify it on chain (`verify` is the `soulpass tx --hash …` command when a hash is known), never retry it with a new key.
 
 Write methods go through the same spend policy as the CLI. Payment recipients still follow SKILL.md → Security Iron Rule 4.
 
@@ -183,7 +189,7 @@ Write methods go through the same spend policy as the CLI. Payment recipients st
 
 | Scenario | Use |
 |----------|-----|
-| One-off payment or swap | CLI (`soulpass pay/swap ...`) |
+| One-off payment or swap | CLI (`soulpass pay` / `soulpass spot`) |
 | 10+ operations in a loop | Daemon |
 | Trading bot polling prices every few seconds | Daemon |
 | Interactive agent session with occasional operations | CLI (simpler) |
@@ -196,7 +202,7 @@ The daemon keeps warm caches — after the first `price` call, subsequent calls 
 
 ### Gas: Authority Pays, Not Wallet
 
-After 30 free sponsored transactions per month, gas comes from your **Authority address**, not your Wallet/Vault. If Authority runs out of SOL, all transactions fail — even if Wallet has plenty of SOL.
+Apart from the first 30 sponsored Solana `pay` transactions per month, gas comes from your **Authority address**, not your Wallet/Vault. If Authority runs out of SOL, all transactions fail — even if Wallet has plenty of SOL.
 
 Check: `soulpass balance --address <authority-address>`
 
@@ -243,11 +249,11 @@ soulpass spot --sell BONK --buy USDC --amount <position> --slippage 300
 
 ### Auto Copy Trading: Follow a Book (primary path)
 
-Single source: SKILL.md → "I want to copy trade" (policy on soulpass.ai, `copy status`, human-confirmed `copy activate`, agent path `copy run`, pause/resume/stop, `plan mismatch` / `needs another device` / `session-expired`). Prefer it over manual tracking whenever a book exists: the server does signal generation and sizing, and this device re-derives the plan, verifies it, and executes.
+Single source: SKILL.md → "I want to copy trade" (policy on soulpass.ai or human-only `copy start`, `copy verify`, `copy status`, human-only `copy activate`, agent path `copy run`, pause/resume/stop, `plan mismatch` / `skippedChains` / `session-expired`). Prefer it over manual tracking whenever a book exists: the server does signal generation and sizing, and this device re-derives the plan, verifies it, and executes.
 
 ### Manual Whale Tracking (fallback — no book covers this wallet)
 
-Mirror trades from a wallet yourself when no book on soulpass.ai already follows it. This is strictly more work than `copy activate` — you do the signal generation, the sizing, and the exit timing by hand. Tools like GMGN.ai, SolSqueezer, and Nansen help identify wallets with strong track records.
+Mirror trades from a wallet yourself when no book on soulpass.ai already follows it. This is strictly more work than following a book — you do the signal generation, the sizing, and the exit timing by hand. Tools like GMGN.ai, SolSqueezer, and Nansen help identify wallets with strong track records.
 
 **Criteria for selecting wallets to follow:**
 - ROI above 100%
@@ -309,10 +315,10 @@ For high-frequency DCA (hourly), use the daemon to avoid startup overhead.
 
 ### Yield + Trading Hybrid
 
-Park idle funds in Jupiter Lend while waiting for trading opportunities:
+Park idle funds in a lending product while waiting for trading opportunities:
 
 ```bash
-# 1. Deposit idle USDC into Jupiter Lend (use live rates)
+# 1. Deposit idle USDC into a lending product (pick it from live `lend markets` data)
 soulpass lend deposit --product <PRODUCT_ID> --amount 500
 
 # 2. Wait for trading opportunity...

@@ -8,10 +8,10 @@ AI agent skill for **Solana trading, DeFi, and agent-to-agent infrastructure** w
 ## What it does
 
 ### Trading & DeFi
-- **Jupiter DEX trading** — swap any Solana token with best-price aggregation across Raydium, Orca, Meteora
-- **Meme coin trading** — pre-trade token risk checks (Jupiter verified flag, liquidity, mint/freeze authority)
-- **Copy trading** — follow a book from soulpass.ai; this device re-derives and verifies every rebalance before signing
-- **DeFi yield** — earn interest via Jupiter Lend on idle USDC/SOL
+- **Spot trading** — buy/sell any Solana token against USDC; routes (Jupiter, launchpad bonding curves) come from SoulPass's execution planner and every leg is checked on-device before signing
+- **Meme coin trading** — pre-trade token risk checks (Jupiter verified flag, liquidity, mint/freeze authority; for launchpad coins LP lock, holder concentration, deployer and first buyers via `market launch`)
+- **Copy trading** — follow a book from soulpass.ai; this device re-derives and verifies every rebalance before signing (Solana legs, each book under its own session)
+- **DeFi yield** — earn interest on idle funds via Jupiter Lend (Solana) or Aave V3 (EVM)
 - **Trading bots** — JSON-RPC daemon for low-latency automated strategies
 
 ### Agent Identity & Communication (ACE)
@@ -24,7 +24,7 @@ AI agent skill for **Solana trading, DeFi, and agent-to-agent infrastructure** w
 SoulPass is an ordinary ACE agent: it has no built-in authority over other agents. Agents that want to message or request payments from SoulPass use the [ACE skill](https://github.com/aceprotocol/ace-skill).
 
 ### Security
-- **Hardware-rooted keys** — the wallet's root key is generated in the Apple Secure Enclave and cannot be exported; no seed phrase, no `.env` key file
+- **Hardware-rooted keys** — the wallet's keys are generated in the Apple Secure Enclave and cannot be exported; chain keys derive from a hybrid post-quantum device root (P-256 ECDH ‖ ML-KEM-768); no seed phrase, no `.env` key file
 - **Guardrails outside the prompt** — CLI spend policy (per-transaction caps, recipient allowlist) is enforced before signing; admission, payment authority and owner-key ceremonies are human-only
 
 ## Quick start
