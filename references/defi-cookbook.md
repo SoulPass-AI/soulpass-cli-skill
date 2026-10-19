@@ -174,12 +174,13 @@ curl -s http://127.0.0.1:8402 -H "Authorization: Bearer $(cat ~/.soulpass/daemon
 | `price` | `{"tokens":["SOL","USDC"]}` | same payload as `soulpass price` |
 | `balance` | `{"token":"USDC"}` (optional; SOL when omitted) | no USD fields |
 | `tx_status` | `{"hash":"<sig>"}` | |
-| `spot` | `{"sell":"USDC","buy":"SOL","amount":"50","slippage":100}` (+ `no_wait?`) | `amount` is a **string**, human-readable; `slippage` integer bps (default 50). An `hl:<COIN>` side takes `reduce_only?`, `leverage?`, `all?` (amount in USD); `no_wait` is refused on it. No `swap` alias |
+| `spot` | `{"sell":"USDC","buy":"SOL","amount":"50","slippage":100}` (+ `no_wait?`) | `amount` is a **string**, human-readable; `slippage` integer bps (default 50). Tokens only: an `hl:` asset is refused, naming `perps_market`. No `swap` alias |
+| `perps_market` | `{"token":"BTC","side":"buy","amount":"100","leverage":3}` (+ `reduce_only?`, `all?`, `slippage?`) | `soulpass perps market` over JSON-RPC: `amount` is US dollars (omit with `"all":true`), `reduce_only` absent = open, `no_wait` refused |
 | `pay` | `{"to":"<addr>","amount":"0.5","token":"SOL","idempotency_key":"…"}` (+ `no_wait?`) | `amount` string, human-readable |
 | `batch` | `{"transactions":[{"to":"<addr1>","value":"1000000000","idempotency_key":"…"},…]}` | ≤ 20 items, **SOL only**, `value` is a **lamports string** |
 | `cache_invalidate` | `{}` | |
 
-The daemon is Solana-only. Results have the same shape as the one-shot command (`price`, `pay`, `spot`; an `hl:` side is `perps market`'s payload); `balance` is the `soulpass balance --token` shape without USD fields. Errors come back as JSON-RPC `error.data` `{error, hint, retryable, …}` — the same contract as the CLI. `skip_sim` is refused on every method: a Solana transaction is always simulated.
+The daemon is Solana-only, plus `perps_market` (Hyperliquid). Results have the same shape as the one-shot command (`price`, `pay`, `spot`, `perps market`); `balance` is the `soulpass balance --token` shape without USD fields. Errors come back as JSON-RPC `error.data` `{error, hint, retryable, …}` — the same contract as the CLI. `skip_sim` is refused on every method: a Solana transaction is always simulated.
 
 `batch` returns `{total, success, failed, unknown, replayed, transactions: [{index, txHash?, status, error?, hint?, verify?, replayed?}]}`: `success` = sent this call, `failed` = never sent (or landed and failed, with its `txHash`), `unknown` = may have been sent, `replayed` = answered from an earlier call under the same key. An `unknown` item is `{status: "unknown", error: "payment_unknown", hint, txHash?, verify?}` — verify it on chain (`verify` is the `soulpass tx --hash …` command when a hash is known), never retry it with a new key.
 
