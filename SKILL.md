@@ -96,7 +96,7 @@ soulpass spot --sell USDC --buy SOL --amount 50 --quote   # shows legs, route, e
 soulpass price SOL USDC                   # real-time USD prices (Jupiter Price API on Solana)
 ```
 
-Amounts are human-readable ("1.5", "100") in the sell token's units — also when you pass a mint address instead of a symbol. ATA creation is automatic. There is no `swap` command (`spot market` is the default subcommand, so `soulpass spot --sell … --buy …` is the whole invocation); one side must be USDC — token-to-token trades are refused, so sell to USDC first, then buy. A plan with no executable leg exits non-zero with `not available yet: <adapter> (<reason>)`; read `status` (`confirmed` | `submitted` | `incomplete` | `failed`) — `incomplete` means a step was sent without a readable receipt: do NOT resend.
+Amounts are human-readable ("1.5", "100") in the sell token's units — also when you pass a mint address instead of a symbol. ATA creation is automatic. There is no `swap` command (`soulpass spot --sell … --buy …` is the whole invocation; Hyperliquid perpetuals are `soulpass perps market`, never `spot`); one side must be USDC — token-to-token trades are refused, so sell to USDC first, then buy. A plan with no executable leg exits non-zero with `not available yet: <adapter> (<reason>)`; read `status` (`confirmed` | `submitted` | `incomplete` | `failed`) — `incomplete` means a step was sent without a readable receipt: do NOT resend.
 
 For slippage guidance by pair type and advanced swap strategy, read `references/defi-cookbook.md`.
 
@@ -126,11 +126,7 @@ On this CLI, automatic copying signs **Solana legs only**, each through that boo
 
 ### 1. Pick a book and set the mandate
 
-Book discovery happens on soulpass.ai — there is no CLI command that lists books (`market` is matrix-market's read-only surface: quote / search / discover / launch / wallet). Before following, you may check a book's published snapshot:
-
-```bash
-soulpass copy verify <bookId>     # verdict ok | unanchored (exit 3) | canonicalMismatch | hashMismatch | headerMismatch | proofInvalid | malformed
-```
+Book discovery happens on soulpass.ai — there is no CLI command that lists books (`market` is matrix-market's read-only surface: quote / search / discover / launch / wallet). You do not verify a book by hand: `copy once`, `copy start` and `copy activate` check its latest snapshot manifest (canonical form, hash, Merkle proof to the day's anchor) before anything is consented to, refuse one that fails its own check (`security_error` — stop and report), and print the result as `bookCheck` (`ok` | `unanchored` | `unavailable`).
 
 The **policy** (budget, venues, risk knobs) is created on soulpass.ai or by the human with `soulpass copy start <bookId> --budget <USD> --venues solana` (human-only: prints the mandate and asks for typed confirmation). The budget must be one the user stated, never one you picked.
 
@@ -162,7 +158,7 @@ soulpass copy daemon           # human-only — subscribes to the leader's strea
 soulpass copy daemon --once    # human-only — the opening sweep only, then exits 0 (the shape a cron entry wants)
 ```
 
-**`copy daemon` is NOT agent-callable.** `soulpass schema` reports it `agentCallable: false`: without `--once` it never returns, so an agent shelling out to it would hang forever. As an agent, use `soulpass copy run` — call it on whatever cadence wakes you up. Unattended 24/7 execution is a human's decision: the human runs `soulpass copy daemon install` (a launchd agent that starts at login) — never install it yourself. `copy daemon status` / `copy daemon uninstall` are agent-callable.
+**`copy daemon` is NOT agent-callable.** `soulpass schema` reports it `agentCallable: false`: without `--once` it never returns, so an agent shelling out to it would hang forever. As an agent, use `soulpass copy run` — call it on whatever cadence wakes you up. Unattended 24/7 execution is a human's decision: the human runs `soulpass copy daemon install` (a launchd agent that starts at login) — never install it yourself. `copy daemon uninstall` is agent-callable; whether the daemon is installed and running is `copy status` → `daemon`.
 
 ### 5. Pause / resume / stop
 
@@ -302,8 +298,8 @@ soulpass msg outbox            # = msg outbox list
 The recipient may be offline: the relay holds the packet and the outbox retries it (same
 message ID, re-encrypted to the current prekey) for up to 7 days. `delivered` means the
 recipient's signed receipt of durable acceptance; relay storage is not that receipt. Keep an
-uncertain send's message ID; do not repeat a new `msg send` to hide uncertainty. Use
-`msg outbox retry <messageId>` to attempt it now and `abandon` to stop retrying. A delivered
+uncertain send's message ID; do not repeat a new `msg send` to hide uncertainty. There is
+nothing to trigger: `msg inbox` / `msg listen` retry it; `msg outbox abandon <messageId>` stops retrying. A delivered
 message cannot be recalled. Only one receiver may hold a wallet's receive lock.
 
 Use canonical types: `ace:text:1`, `ace:commerce:<rfq|offer|accept|reject|invoice|payment|deliver|confirm>:1`,
@@ -415,7 +411,7 @@ Errors are JSON on stderr: `{"error": "<code>", "message", "hint", "retryable"}`
 | `requires_tty` | Human-only command | Tell the human to run it themselves in their terminal |
 | `security_error` | Possible compromise | Do not retry; stop and report |
 | `messaging_error` with `not_permitted` from the relay | That peer has not admitted this agent (no valid delivery permit) | Ask the human to compare the full ACE ID and complete the contact flow; keep both runtimes receiving |
-| A send still `pending` in `soulpass msg outbox` | No receipt yet — the peer is offline or has not admitted you | The outbox keeps retrying for 7 days (then `expired`). Retry the SAME message (`msg outbox retry <messageId>`) — never a new message |
+| A send still `pending` in `soulpass msg outbox` | No receipt yet — the peer is offline or has not admitted you | The outbox keeps retrying for 7 days (then `expired`) every time `msg inbox` / `msg listen` runs. Wait — never send the same content as a new message |
 | `messaging_error` "The recipient rejected the message: `<code>`" | The receiver permanently refused it (e.g. `not_permitted` from an owner that did not delegate to this agent) | Not retried automatically. Tell the user; `msg outbox abandon <messageId>` if it should be dropped |
 | `messaging_error` mentioning another listener | Another process (`msg listen`, `agent payments serve`) holds this wallet's inbox | Use that receiver, or stop it first; one receiver per wallet |
 
@@ -445,7 +441,7 @@ soulpass sign x402 --pay-to <recipient> --amount 1000000 --token USDC --fee-paye
 
 ## Performance Flags
 
-`--no-wait` (return the txHash as soon as it is broadcast, skip confirmation) exists on `pay`, `exec`, `spot market`, `approve`, `bridge`, `move run`, `predict setup` and `identity mint` (refused on an `hl:` spot order); `lend deposit`/`lend withdraw` take `--simulate` instead. There is no `--skip-sim`: simulation always runs.
+`--no-wait` (return the txHash as soon as it is broadcast, skip confirmation) exists on `pay`, `exec`, `spot`, `approve`, `bridge`, `move run`, `predict setup` and `identity mint` (`perps market` has none: its outcome is reconciled with Hyperliquid before it returns); `lend deposit`/`lend withdraw` take `--simulate` instead. There is no `--skip-sim`: simulation always runs.
 
 ## Environment
 

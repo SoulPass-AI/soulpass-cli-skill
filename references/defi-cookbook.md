@@ -179,7 +179,7 @@ curl -s http://127.0.0.1:8402 -H "Authorization: Bearer $(cat ~/.soulpass/daemon
 | `batch` | `{"transactions":[{"to":"<addr1>","value":"1000000000","idempotency_key":"…"},…]}` | ≤ 20 items, **SOL only**, `value` is a **lamports string** |
 | `cache_invalidate` | `{}` | |
 
-The daemon is Solana-only. Results have the same shape as the one-shot command (`price`, `pay`, `spot market`); `balance` is the `soulpass balance --token` shape without USD fields. Errors come back as JSON-RPC `error.data` `{error, hint, retryable, …}` — the same contract as the CLI. `skip_sim` is refused on every method: a Solana transaction is always simulated.
+The daemon is Solana-only. Results have the same shape as the one-shot command (`price`, `pay`, `spot`; an `hl:` side is `perps market`'s payload); `balance` is the `soulpass balance --token` shape without USD fields. Errors come back as JSON-RPC `error.data` `{error, hint, retryable, …}` — the same contract as the CLI. `skip_sim` is refused on every method: a Solana transaction is always simulated.
 
 `batch` returns `{total, success, failed, unknown, replayed, transactions: [{index, txHash?, status, error?, hint?, verify?, replayed?}]}`: `success` = sent this call, `failed` = never sent (or landed and failed, with its `txHash`), `unknown` = may have been sent, `replayed` = answered from an earlier call under the same key. An `unknown` item is `{status: "unknown", error: "payment_unknown", hint, txHash?, verify?}` — verify it on chain (`verify` is the `soulpass tx --hash …` command when a hash is known), never retry it with a new key.
 
@@ -249,7 +249,7 @@ soulpass spot --sell BONK --buy USDC --amount <position> --slippage 300
 
 ### Auto Copy Trading: Follow a Book (primary path)
 
-Single source: SKILL.md → "I want to copy trade" (policy on soulpass.ai or human-only `copy start`, `copy verify`, `copy status`, human-only `copy activate`, agent path `copy run`, pause/resume/stop, `plan mismatch` / `skippedChains` / `session-expired`). Prefer it over manual tracking whenever a book exists: the server does signal generation and sizing, and this device re-derives the plan, verifies it, and executes.
+Single source: SKILL.md → "I want to copy trade" (policy on soulpass.ai or human-only `copy start` (the book check runs inside it and `copy once` / `copy activate`, reported as `bookCheck`), `copy status`, human-only `copy activate`, agent path `copy run`, pause/resume/stop, `plan mismatch` / `skippedChains` / `session-expired`). Prefer it over manual tracking whenever a book exists: the server does signal generation and sizing, and this device re-derives the plan, verifies it, and executes.
 
 ### Manual Whale Tracking (fallback — no book covers this wallet)
 
