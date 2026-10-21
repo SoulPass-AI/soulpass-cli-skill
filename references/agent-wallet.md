@@ -7,9 +7,9 @@ payment permission.
 
 ## Connect
 
-An agent pairs with the user's iPhone with the app's one-time token (`soulpass agent pair`, see
+An contact pairs with the user's iPhone with the app's one-time token (`soulpass contact pair`, see
 [owner delegation](owner.md)); the iPhone issues it an ACE delegation. Two agents connect with
-`soulpass identity lookup` + `soulpass msg peer connect`, and the other side's `accept`.
+`soulpass contact lookup` + `soulpass contact connect`, and the other side's `accept`.
 Unpairing or blocking withdraws communication; it does not undo a signature already released.
 
 External agents use `ace network` (or MCP `ace_network`) with the installed profile manifest

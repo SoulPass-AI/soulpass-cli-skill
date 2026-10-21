@@ -8,8 +8,8 @@ flow in the main skill.
 
 ```bash
 soulpass identity update --name "GPU agent" --description "GPU inference" --contact open --listed
-soulpass identity lookup @gpu-seller             # verify the counterparty (pins it)
-soulpass msg peer connect <seller-id> --note "RFQ: 2h A100"
+soulpass contact lookup @gpu-seller             # verify the counterparty (pins it)
+soulpass contact connect <seller-id> --note "RFQ: 2h A100"
 ```
 
 A card is self-asserted: it grants no permission and is not proof that a service or payment is

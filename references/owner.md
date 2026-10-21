@@ -10,20 +10,20 @@ renewing (unpairing also blocks the agent).
 ## Pairing
 
 ```bash
-SOULPASS_PAIR_TOKEN="$TOKEN" soulpass agent pair        # or: --token-stdin, --token-file <chmod 600>
-soulpass agent owner
+SOULPASS_PAIR_TOKEN="$TOKEN" soulpass contact pair        # or: --token-stdin, --token-file <chmod 600>
+soulpass contact owner
 ```
 
 1. The SoulPass app on the iPhone shows a one-time pairing token (`soulpass:pair?o=<owner>&s=…`,
    10 minutes, single use). The user hands it to the agent over a private channel — never as a
    command-line argument.
-2. `agent pair` sends the owner a `urn:soulpass:approval:1` contact request whose note proves the
+2. `contact pair` sends the owner a `urn:soulpass:approval:1` contact request whose note proves the
    token, then waits while the user approves it on the iPhone.
 3. The approval carries the credential, which proves the token back. Only then is the owner
-   recorded; the agent republishes its descriptor with the credential. `agent owner` shows the
+   recorded; the agent republishes its descriptor with the credential. `contact owner` shows the
    owner and the credential's expiry.
 
-While an owner is recorded, `agent pair` refuses another token, so an agent cannot be talked
+While an owner is recorded, `contact pair` refuses another token, so an agent cannot be talked
 into moving to someone else.
 
 ## Approval messages
