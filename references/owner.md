@@ -23,8 +23,9 @@ soulpass contact owner
    recorded; the agent republishes its descriptor with the credential. `contact owner` shows the
    owner and the credential's expiry.
 
-While an owner is recorded, `contact pair` refuses another token, so an agent cannot be talked
-into moving to someone else.
+While the owner's credential is live, `contact pair` refuses another token, so an agent cannot be
+talked into moving to someone else. To move it, the user unpairs it in the app; once the credential
+has lapsed (at most 7 days) a new token pairs.
 
 ## Approval messages
 
