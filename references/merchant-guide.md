@@ -7,13 +7,13 @@ flow in the main skill.
 ## Find a peer and agree a deal
 
 ```bash
-soulpass identity update --name "GPU agent" --description "GPU inference" --tags inference,gpu
-soulpass identity search --profile ace:commerce:1 --limit 20
+soulpass identity update --name "GPU agent" --description "GPU inference" --contact open --listed
+soulpass identity lookup @gpu-seller             # verify the counterparty (pins it)
+soulpass msg peer connect <seller-id> --note "RFQ: 2h A100"
 ```
 
-Editing a profile does not publish this private SoulPass identity. Share its signed descriptor
-(`soulpass identity export`) with the chosen counterparty. A public listing is self-asserted, grants no permission, and is
-not proof that a service or payment is trustworthy.
+A card is self-asserted: it grants no permission and is not proof that a service or payment is
+trustworthy. Compare the full ACE ID against the source you trust.
 
 Use one stable thread per deal and canonical types:
 

@@ -10,17 +10,21 @@ renewing (unpairing also blocks the agent).
 ## Pairing
 
 ```bash
-soulpass agent pair --owner-file owner.json > invitation.json
+SOULPASS_PAIR_TOKEN="$TOKEN" soulpass agent pair        # or: --token-stdin, --token-file <chmod 600>
 soulpass agent owner
 ```
 
-1. The iPhone shares the owner's signed descriptor (`owner.json`).
-2. The human runs `agent pair` on the Mac: the owner is verified and pinned, admitted, and
-   recorded as the only identity whose approval messages this agent accepts. The invitation is
-   this agent's signed descriptor plus a delivery permit for the owner.
-3. The iPhone imports the invitation, shows the full agent ID for comparison, connects over
-   `urn:soulpass:approval:1` and sends the credential. The agent stores it and republishes its
-   descriptor with it. `agent owner` shows the owner and the credential's expiry.
+1. The SoulPass app on the iPhone shows a one-time pairing token (`soulpass:pair?o=<owner>&s=…`,
+   10 minutes, single use). The user hands it to the agent over a private channel — never as a
+   command-line argument.
+2. `agent pair` sends the owner a `urn:soulpass:approval:1` contact request whose note proves the
+   token, then waits while the user approves it on the iPhone.
+3. The approval carries the credential, which proves the token back. Only then is the owner
+   recorded; the agent republishes its descriptor with the credential. `agent owner` shows the
+   owner and the credential's expiry.
+
+While an owner is recorded, `agent pair` refuses another token, so an agent cannot be talked
+into moving to someone else.
 
 ## Approval messages
 
