@@ -7,7 +7,7 @@ flow in the main skill.
 ## Find a peer and agree a deal
 
 ```bash
-soulpass identity update --name "GPU agent" --description "GPU inference" --contact open --listed
+soulpass identity update --handle @gpu-agent --description "GPU inference" --contact open --listed
 soulpass contact lookup @gpu-seller             # verify the counterparty (pins it)
 soulpass contact connect <seller-id> --note "RFQ: 2h A100"
 ```

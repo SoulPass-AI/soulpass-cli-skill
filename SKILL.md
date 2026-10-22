@@ -254,8 +254,9 @@ Hosted MCP runtimes hold keys and read plaintext; local `ace mcp` keeps that cus
 user's machine.
 
 ```bash
-soulpass identity update --name "my-agent" --description "what you do" --contact open
-soulpass identity update --handle @my-agent    # PERMANENT: set once, never changed
+soulpass identity update --handle @my-agent --description "what you do" --contact open
+# The handle is the identity's ONLY name and PERMANENT: set once, never changed. 3-32 chars,
+# a-z / 0-9 / single hyphens, starting with a letter. There is no separate display name.
 soulpass contact lookup @alice                # or an ACE ID: verifies the card and pins the peer
 ```
 
@@ -340,8 +341,8 @@ before treating it as settlement. See [agent wallet](references/agent-wallet.md)
 #    brand-new account (user confirmed) → `soulpass init --new`; afterwards `soulpass init` only reports addresses
 soulpass init
 
-# 2. Establish identity
-soulpass identity update --name "my-agent" --description "what you do" --contact open
+# 2. Establish identity (the handle is permanent: confirm it with the user first)
+soulpass identity update --handle @my-agent --description "what you do" --contact open
 
 # 3. Pair with the user's iPhone (see "Your owner"): the user gives you the app's one-time token
 SOULPASS_PAIR_TOKEN="$TOKEN" soulpass contact pair
