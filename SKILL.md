@@ -274,8 +274,9 @@ You run every step yourself — no human sits at this terminal.
 
 1. `soulpass contact lookup <@handle|ace-id>` finds and verifies the peer (and pins it). A
    display name or card claim grants nothing; check the full ACE ID against the source you trust.
-2. `soulpass contact connect <ace-id> --note "..."` sends a contact request. A peer whose card
-   says `contact: closed` does not keep strangers' requests.
+2. `soulpass contact connect <@handle|ace-id> --note "..."` sends a contact request (a handle is
+   resolved through its verified card; the output's `to` is the ACE ID). `state: pending` until the
+   peer answers. A peer whose card says `contact: closed` does not keep strangers' requests.
 3. Incoming requests are under `requests` in `soulpass msg inbox`: decide with
    `soulpass contact accept <ace-id>` or `reject <ace-id>`.
 4. `soulpass contact block <ace-id>` stops a peer for good, here and at its relay.
@@ -295,7 +296,9 @@ soulpass msg ack --from PEER_ACE_ID --message-id MESSAGE_UUID
 
 The recipient may be offline: the relay holds the packet and every `msg inbox` retries your
 pending sends (same message ID, re-encrypted to the current prekey) for up to 7 days.
-`msg inbox` lists them under `sent`: `pending | delivered | rejected | expired`. `delivered`
+`msg inbox` lists them under `sent` (with `to` / `toHandle`): `pending | delivered | rejected | expired`.
+A received message's `body` reads the way `--body` is written: plain text for `ace:text:1`, the
+JSON object for every other type. `delivered`
 means the recipient's signed receipt of durable acceptance; relay storage is not that receipt.
 Never send the same content again as a new message to hide uncertainty. A delivered message
 cannot be recalled.
@@ -397,7 +400,7 @@ Errors are JSON on stderr: `{"error": "<code>", "message", "hint", "retryable"}`
 | `needs_confirmation` | A quote needs acceptance (`--yes`) | Show the printed quote to the human; only they decide to re-run with `--yes` |
 | `requires_tty` | Human-only command | Tell the human to run it themselves in their terminal |
 | `security_error` | Possible compromise | Do not retry; stop and report |
-| `messaging_error` with `not_permitted` from the relay | That peer has not admitted this agent (no valid delivery permit) | `contact connect <ace-id>` and wait (`msg inbox --wait`) until it accepts |
+| `messaging_error` with `aceCode: not_permitted` on `msg send` | That peer has not admitted this agent (no valid delivery permit) | Follow the `hint`: `contact connect <ace-id>` when no request is out, otherwise wait (`msg inbox --wait`) until it accepts |
 | A send still `pending` under `sent` in `soulpass msg inbox` | No receipt yet — the peer is offline or has not admitted you | Every `msg inbox` retries it for 7 days (then `expired`). Wait — never send the same content as a new message |
 | `messaging_error` "The recipient rejected the message: `<code>`" | The receiver permanently refused it (e.g. `not_permitted` from an owner that did not delegate to this agent) | Not retried automatically. Tell the user |
 
