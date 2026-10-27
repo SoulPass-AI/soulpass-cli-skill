@@ -175,7 +175,7 @@ Before executing anything, this device **re-derives the rebalance plan itself** 
 Things that look like failures but are the system working as designed:
 - **`submitted` legs / a `partial` run** — handed to the chain, not yet confirmed; the server's verifier settles them and the next recompute plans the remainder. Check `unreported` before re-running: those legs never reached the server and may be planned again.
 - **`skippedChains`** — legs this Mac cannot sign (no session for that venue). Another of your devices that can picks them up.
-- **`session-expired` warning** — the book's Solana session can no longer sign (missing, expired, stale after an owner change, or mandate mismatch). The book auto-pauses, server and local. Fix it with `soulpass copy resume <bookId>` on the Mac whose key is the wallet's root (it signs a new session); elsewhere resume fails and the book stays paused — copy trading never resumes by itself.
+- **`session-expired` warning** — the book's Solana session can no longer sign (missing, expired, stale after an owner change, mandate mismatch, or a session that lacks Memo). The book auto-pauses, server and local. Fix it with `soulpass copy resume <bookId>` on the Mac whose key is the wallet's root (it signs a new session); elsewhere resume fails and the book stays paused — copy trading never resumes by itself.
 
 ### Manual alternative: tracking a wallet yourself
 
