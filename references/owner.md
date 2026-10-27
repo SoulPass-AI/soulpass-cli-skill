@@ -19,8 +19,9 @@ soulpass contact owner
    command-line argument.
 2. `contact pair` sends the owner a `urn:soulpass:approval:1` contact request whose note proves the
    token, then waits while the user approves it on the iPhone.
-3. The approval carries the credential, which proves the token back. Only then is the owner
-   recorded; the agent republishes its descriptor with the credential. `contact owner` shows the
+3. The approval delivers an `ace:delegation:1` credential signed by the owner the token names. Only
+   then is the owner recorded; the agent republishes its descriptor with the credential in
+   `ext["ace:delegation:1"]`. `contact owner` shows the
    owner and the credential's expiry.
 
 While the owner's credential is live, `contact pair` refuses another token, so an agent cannot be
@@ -36,7 +37,9 @@ The SoulPass profile `urn:soulpass:approval:1` carries:
 | `urn:soulpass:approval:request:1` | agent → owner | `action`, `summary`, optional `amount`, `currency`, `expiresAt` (unix seconds), `details`, `ref` |
 | `urn:soulpass:approval:decision:1` | owner → agent | `requestId`, `outcome` (`approve` / `deny`), optional `reason`, `result` |
 | `urn:soulpass:approval:report:1` | agent → owner | `action`, `summary`, `outcome` (`ok` / `failed` / `skipped`), optional `requestId`, `ref`, `proof` |
-| `urn:soulpass:approval:delegation:1` | owner → agent | `delegation` (`{kel, credential}`) |
+
+The owner delivers and renews the agent's credential with ACE's own `ace:delegation:1` message
+(`{credential}`: `issuer`, `subject`, `issuedAt`, `expiresAt`, `signature`; at most 7 days).
 
 Both sides enforce the relationship on send and receive: agent messages are accepted only from
 a live delegate of the receiving owner (`not_permitted` otherwise); owner messages only from the
