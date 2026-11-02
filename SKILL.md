@@ -437,7 +437,7 @@ soulpass sign x402 --pay-to <recipient> --amount 1000000 --token USDC --fee-paye
 
 ## Environment
 
-Defaults to **production** (Solana Mainnet). Set `SOULPASS_ENV=test` for Devnet.
+Defaults to **production** (Solana Mainnet). Set `SOULPASS_ENV=test` for Devnet, `SOULPASS_ENV=uat` for the uat backend on mainnet.
 
 ## Reference Files
 
