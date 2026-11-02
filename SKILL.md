@@ -322,7 +322,10 @@ soulpass contact owner                               # the paired owner and cred
 
 The user gives you the token from the app over a private channel (environment, stdin or a
 chmod-600 file — never as an argument). `contact pair` sends the owner a request proving the
-token and waits for the user to approve it on the iPhone. Agent `request` / `report` messages
+token and waits for the user to approve it on the iPhone. A `request` with any non-payment
+`action` is a consent request the owner approves or denies on the iPhone; describe it with
+`details.display` (see [owner delegation](references/owner.md)). Approval is consent only — it
+never moves the owner's money. Agent `request` / `report` messages
 are accepted only from a live delegate; owner `decision` messages only from the agent's owner,
 and only for an open request. See [owner delegation](references/owner.md).
 
