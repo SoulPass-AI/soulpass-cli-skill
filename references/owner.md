@@ -43,14 +43,18 @@ The owner delivers and renews the agent's credential with ACE's own `ace:delegat
 
 ### Asking your owner: consent requests and the approval card
 
-Any `action` you name is yours to define (`restaurant.book`, `email.send`, `x402.pay` paid from
-your own funds, ...). On the iPhone a request whose action is not a payment word is a **consent
+Any `action` you name is yours to define (`restaurant.book`, `email.send`, ...). On the iPhone a request whose action is not a payment word is a **consent
 request**: the owner sees it, approves with one passkey presence or denies, and you receive a
 `decision`. Approving moves nothing from the owner's wallet and runs nothing on the phone — it is
 the owner saying yes; you do the work, then send a `report`. The payment words `pay` and
 `urn:soulpass:pay:1` are reserved: a payment from the owner's wallet is only ever a
 `urn:soulpass:payment:proposal:1` (see [agent wallet](agent-wallet.md)); a plain request using
 one of those words can only be denied.
+
+An x402 payment is likewise never a consent request: pay it from your own wallet
+(`soulpass sign x402 --required ...`), or from the owner's wallet propose it with the SoulPass MCP
+`propose_payment` tool, `x402` = the PaymentRequired (USDC on Base only). The owner signs on the
+iPhone; the receipt comes back `status: "authorized"` with `x402` = the PAYMENT-SIGNATURE value.
 
 Describe what the owner is agreeing to in `details.display` (a SoulPass convention inside the
 free `details` object; the rest of `details` stays yours):

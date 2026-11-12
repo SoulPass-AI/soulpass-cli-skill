@@ -41,7 +41,7 @@ soulpass spot --sell SOL --buy USDC --amount 1.5
 soulpass spot --sell So11111111111111111111111111111111111111112 --buy EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v --amount 1.5
 ```
 
-Passing atomic units here would trade `10^decimals` times more than intended. The only SoulPass command that takes atomic units is `sign x402 --amount` (the x402 protocol carries atomic amounts).
+Passing atomic units here would trade `10^decimals` times more than intended. No SoulPass command takes atomic units; `sign x402` reads them from the server's offer itself.
 
 ---
 
