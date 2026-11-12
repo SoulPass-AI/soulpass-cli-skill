@@ -53,7 +53,7 @@ one of those words can only be denied.
 
 An x402 payment is likewise never a consent request: pay it from your own wallet
 (`soulpass sign x402 --required ...`), or from the owner's wallet propose it with the SoulPass MCP
-`propose_payment` tool, `x402` = the PaymentRequired (USDC on Base only). The owner signs on the
+`propose_payment` tool, `x402` = the PaymentRequired as a string (the `PAYMENT-REQUIRED` value, or the JSON text) (USDC on Base only). The owner signs on the
 iPhone; the receipt comes back `status: "authorized"` with `x402` = the PAYMENT-SIGNATURE value.
 
 Describe what the owner is agreeing to in `details.display` (a SoulPass convention inside the
