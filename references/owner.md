@@ -34,7 +34,7 @@ The SoulPass profile `urn:soulpass:approval:1` carries:
 
 | Type | Direction | Body |
 | --- | --- | --- |
-| `urn:soulpass:approval:request:1` | agent → owner | `action`, `summary`, optional `amount`, `currency`, `expiresAt` (unix seconds), `details`, `ref` |
+| `urn:soulpass:approval:request:1` | agent → owner | `action`, `summary`, optional `expiresAt` (unix seconds), `details`, `ref` — no amount: money from the owner's wallet is only a payment proposal |
 | `urn:soulpass:approval:decision:1` | owner → agent | `requestId`, `outcome` (`approve` / `deny`), optional `reason`, `result` |
 | `urn:soulpass:approval:report:1` | agent → owner | `action`, `summary`, `outcome` (`ok` / `failed` / `skipped`), optional `requestId`, `ref`, `proof` |
 
