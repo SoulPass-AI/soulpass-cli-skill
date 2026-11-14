@@ -128,7 +128,7 @@ On this CLI, automatic copying signs **Solana trades only**, each through that p
 
 Portfolio discovery happens on soulpass.ai — there is no CLI command that lists portfolios (`market` is matrix-market's read-only surface: quote / search / discover / launch / wallet). You do not verify a portfolio by hand: `copy once`, `copy start` and `copy activate` check its latest snapshot manifest (canonical form, hash, Merkle proof to the day's anchor) before anything is consented to, refuse one that fails its own check (`security_error` — stop and report), and print the result as `bookCheck` (`ok` | `unanchored` | `unavailable`).
 
-The **policy** (budget, where new money goes, risk knobs) is created on soulpass.ai or by the human with `soulpass copy start <portfolioId> --budget <USD> --venues solana` (human-only: prints the mandate and asks for typed confirmation). The budget must be one the user stated, never one you picked.
+The **policy** (budget, where new money goes, risk knobs) is created on soulpass.ai or by the human with `soulpass copy start <portfolio-id> --budget <USD> --venues solana` (human-only: prints the mandate and asks for typed confirmation). The budget must be one the user stated, never one you picked.
 
 ### 2. Check what this device can execute
 
@@ -141,12 +141,12 @@ Lists every portfolio your account copies (`policies`, with this device's record
 ### 3. Activate on this device — the one attended moment (human-only)
 
 ```bash
-soulpass copy activate <portfolioId>
+soulpass copy activate <portfolio-id>
 ```
 
 Authorizes this portfolio's own Solana session on this Mac (capped at the portfolio's budget; settled proceeds stay available to the portfolio). It is human-only — the human reviews the policy and types the confirmation in their terminal. Everything after this runs with no further prompts.
 
-`soulpass copy once <portfolioId> --budget … --venues …` creates a one-time policy, activates it (same session ceremony) and executes the first batch. An agent may call it only when the budget is within the `copyOnceMaxBudgetUsd` ceiling a person wrote into `~/.soulpass/spend-policy.json`; above it (or with no ceiling set) it needs the human's terminal. A one-time copy cannot be resumed or changed.
+`soulpass copy once <portfolio-id> --budget … --venues …` creates a one-time policy, activates it (same session ceremony) and executes the first batch. An agent may call it only when the budget is within the `copyOnceMaxBudgetUsd` ceiling a person wrote into `~/.soulpass/spend-policy.json`; above it (or with no ceiling set) it needs the human's terminal. A one-time copy cannot be resumed or changed.
 
 ### 4. Run it — agent path vs. human path
 
@@ -163,9 +163,9 @@ soulpass copy daemon --once    # human-only — the opening sweep only, then exi
 ### 5. Pause / resume / stop
 
 ```bash
-soulpass copy pause <portfolioId>     # stop executing this portfolio here, keep the policy and its session
-soulpass copy resume <portfolioId>    # resume; renews the portfolio's session when this Mac's key is the wallet's root
-soulpass copy stop <portfolioId>      # drop the policy and revoke this portfolio's session (positions stay)
+soulpass copy pause <portfolio-id>     # stop executing this portfolio here, keep the policy and its session
+soulpass copy resume <portfolio-id>    # resume; renews the portfolio's session when this Mac's key is the wallet's root
+soulpass copy stop <portfolio-id>      # drop the policy and revoke this portfolio's session (positions stay)
 ```
 
 ### It re-plans before it signs — and that's the safety net
@@ -175,7 +175,7 @@ Before executing anything, this device **re-derives the rebalance plan itself** 
 Things that look like failures but are the system working as designed:
 - **`submitted` trades / a `partial` run** — handed to the chain, not yet confirmed; the server's verifier settles them and the next recompute plans the remainder. Check `unreported` before re-running: those trades never reached the server and may be planned again.
 - **`skippedChains`** — trades this Mac cannot sign (no session for that venue). Another of your devices that can picks them up.
-- **`session-expired` warning** — the portfolio's Solana session can no longer sign (missing, expired, stale after an owner change, mandate mismatch, or a session that lacks Memo). Copying that portfolio auto-pauses, server and local. A lost session (missing, revoked, stale) needs `soulpass copy activate <portfolioId>`; an expired one is renewed by `soulpass copy resume <portfolioId>` — both on the Mac whose key is the wallet's root. Elsewhere both fail and the portfolio stays paused — copy trading never resumes by itself.
+- **`session-expired` warning** — the portfolio's Solana session can no longer sign (missing, expired, stale after an owner change, mandate mismatch, or a session that lacks Memo). Copying that portfolio auto-pauses, server and local. A lost session (missing, revoked, stale) needs `soulpass copy activate <portfolio-id>`; an expired one is renewed by `soulpass copy resume <portfolio-id>` — both on the Mac whose key is the wallet's root. Elsewhere both fail and the portfolio stays paused — copy trading never resumes by itself.
 
 ### Manual alternative: tracking a wallet yourself
 
