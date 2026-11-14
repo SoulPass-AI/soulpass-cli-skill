@@ -10,7 +10,7 @@ AI agent skill for **Solana trading, DeFi, and agent-to-agent infrastructure** w
 ### Trading & DeFi
 - **Spot trading** — buy/sell any Solana token against USDC; routes (Jupiter, launchpad bonding curves) come from SoulPass's execution planner and every leg is checked on-device before signing
 - **Meme coin trading** — pre-trade token risk checks (Jupiter verified flag, liquidity, mint/freeze authority; for launchpad coins LP lock, holder concentration, deployer and first buyers via `market launch`)
-- **Copy trading** — follow a book from soulpass.ai; this device re-derives and verifies every rebalance before signing (Solana legs, each book under its own session)
+- **Copy trading** — copy a portfolio from soulpass.ai; this device re-derives and verifies every rebalance before signing (Solana trades, each portfolio under its own session)
 - **DeFi yield** — earn interest on idle funds via Jupiter Lend (Solana) or Aave V3 (EVM)
 - **Trading bots** — JSON-RPC daemon for low-latency automated strategies
 

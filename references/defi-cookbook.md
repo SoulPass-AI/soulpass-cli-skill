@@ -10,7 +10,7 @@ Operational wisdom for DeFi on Solana via SoulPass CLI. For command syntax and p
 4. [Recipes — Common DeFi Patterns](#recipes)
 5. [High-Frequency Daemon](#high-frequency-daemon)
 6. [Pitfalls & Safety](#pitfalls)
-7. [Trading Strategies](#trading-strategies) — Meme coin safety, auto copy trading (follow a book), manual whale tracking
+7. [Trading Strategies](#trading-strategies) — Meme coin safety, auto copy trading (copy a portfolio), manual whale tracking
 
 ---
 
@@ -248,13 +248,13 @@ soulpass spot --sell BONK --buy USDC --amount <position> --slippage 300
 
 **Slippage for meme coins:** Use 200-500 BPS. Thin orderbooks cause large price impact. If a swap fails with slippage error, increase by 50 BPS increments — don't jump to 500.
 
-### Auto Copy Trading: Follow a Book (primary path)
+### Auto Copy Trading: Copy a Portfolio (primary path)
 
-Single source: SKILL.md → "I want to copy trade" (policy on soulpass.ai or human-only `copy start` (the book check runs inside it and `copy once` / `copy activate`, reported as `bookCheck`), `copy status`, human-only `copy activate`, agent path `copy run`, pause/resume/stop, `plan mismatch` / `skippedChains` / `session-expired`). Prefer it over manual tracking whenever a book exists: the server does signal generation and sizing, and this device re-derives the plan, verifies it, and executes.
+Single source: SKILL.md → "I want to copy trade" (policy on soulpass.ai or human-only `copy start` (the portfolio check runs inside it and `copy once` / `copy activate`, reported as `bookCheck`), `copy status`, human-only `copy activate`, agent path `copy run`, pause/resume/stop, `plan mismatch` / `skippedChains` / `session-expired`). Prefer it over manual tracking whenever a portfolio exists: the server does signal generation and sizing, and this device re-derives the plan, verifies it, and executes.
 
-### Manual Whale Tracking (fallback — no book covers this wallet)
+### Manual Whale Tracking (fallback — no portfolio covers this wallet)
 
-Mirror trades from a wallet yourself when no book on soulpass.ai already follows it. This is strictly more work than following a book — you do the signal generation, the sizing, and the exit timing by hand. Tools like GMGN.ai, SolSqueezer, and Nansen help identify wallets with strong track records.
+Mirror trades from a wallet yourself when no portfolio on soulpass.ai already copies it. This is strictly more work than copying a portfolio — you do the signal generation, the sizing, and the exit timing by hand. Tools like GMGN.ai, SolSqueezer, and Nansen help identify wallets with strong track records.
 
 **Criteria for selecting wallets to follow:**
 - ROI above 100%

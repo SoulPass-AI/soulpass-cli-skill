@@ -118,17 +118,17 @@ For rapid repeated calls, see `references/defi-cookbook.md` → "High-Frequency 
 
 ---
 
-## "I want to copy trade" (follow a book)
+## "I want to copy trade" (copy a portfolio)
 
-Auto copy trading follows a **book** — a portfolio someone else manages — and executes its rebalances with YOUR keys on YOUR device. This is the primary way to copy trade on SoulPass. Hand-tracking a single wallet's swaps (further down) is a manual fallback for when no book covers what you want to follow.
+Auto copy trading copies a **portfolio** someone else manages and executes its rebalances with YOUR keys on YOUR device. This is the primary way to copy trade on SoulPass. Hand-tracking a single wallet's swaps (further down) is a manual fallback for when no portfolio covers what you want to copy.
 
-On this CLI, automatic copying signs **Solana legs only**, each through that book's own Solana session (it never falls back to the owner key or a Hyperliquid agent). Legs on other venues are left for another of your devices.
+On this CLI, automatic copying signs **Solana trades only**, each through that portfolio's own Solana session (it never falls back to the owner key or a Hyperliquid agent). Trades on other venues are left for another of your devices.
 
-### 1. Pick a book and set the mandate
+### 1. Pick a portfolio and set the mandate
 
-Book discovery happens on soulpass.ai — there is no CLI command that lists books (`market` is matrix-market's read-only surface: quote / search / discover / launch / wallet). You do not verify a book by hand: `copy once`, `copy start` and `copy activate` check its latest snapshot manifest (canonical form, hash, Merkle proof to the day's anchor) before anything is consented to, refuse one that fails its own check (`security_error` — stop and report), and print the result as `bookCheck` (`ok` | `unanchored` | `unavailable`).
+Portfolio discovery happens on soulpass.ai — there is no CLI command that lists portfolios (`market` is matrix-market's read-only surface: quote / search / discover / launch / wallet). You do not verify a portfolio by hand: `copy once`, `copy start` and `copy activate` check its latest snapshot manifest (canonical form, hash, Merkle proof to the day's anchor) before anything is consented to, refuse one that fails its own check (`security_error` — stop and report), and print the result as `bookCheck` (`ok` | `unanchored` | `unavailable`).
 
-The **policy** (budget, venues, risk knobs) is created on soulpass.ai or by the human with `soulpass copy start <bookId> --budget <USD> --venues solana` (human-only: prints the mandate and asks for typed confirmation). The budget must be one the user stated, never one you picked.
+The **policy** (budget, where new money goes, risk knobs) is created on soulpass.ai or by the human with `soulpass copy start <portfolioId> --budget <USD> --venues solana` (human-only: prints the mandate and asks for typed confirmation). The budget must be one the user stated, never one you picked.
 
 ### 2. Check what this device can execute
 
@@ -136,24 +136,24 @@ The **policy** (budget, venues, risk knobs) is created on soulpass.ai or by the 
 soulpass copy status
 ```
 
-Lists every book your account follows (`policies`, with this device's record under `local`), open rebalances (`openIntents`), and under `caps` what THIS Mac can sign: `solanaSession`, `hlAgent`, `evmOwner` (+ `list`). A false bit disables the venues that need it on this device.
+Lists every portfolio your account copies (`policies`, with this device's record under `local`), open rebalances (`openIntents`), and under `caps` what THIS Mac can sign: `solanaSession`, `hlAgent`, `evmOwner` (+ `list`). A false bit disables the venues that need it on this device.
 
 ### 3. Activate on this device — the one attended moment (human-only)
 
 ```bash
-soulpass copy activate <bookId>
+soulpass copy activate <portfolioId>
 ```
 
-Authorizes this book's own Solana session on this Mac (principal capped at the book's allocation; settled proceeds stay available to the book). It is human-only — the human reviews the policy and types the confirmation in their terminal. Everything after this runs with no further prompts.
+Authorizes this portfolio's own Solana session on this Mac (capped at the portfolio's budget; settled proceeds stay available to the portfolio). It is human-only — the human reviews the policy and types the confirmation in their terminal. Everything after this runs with no further prompts.
 
-`soulpass copy once <bookId> --budget … --venues …` creates a one-time policy, activates it (same session ceremony) and executes the first batch. An agent may call it only when the budget is within the `copyOnceMaxBudgetUsd` ceiling a person wrote into `~/.soulpass/spend-policy.json`; above it (or with no ceiling set) it needs the human's terminal. A one-time copy cannot be resumed or changed.
+`soulpass copy once <portfolioId> --budget … --venues …` creates a one-time policy, activates it (same session ceremony) and executes the first batch. An agent may call it only when the budget is within the `copyOnceMaxBudgetUsd` ceiling a person wrote into `~/.soulpass/spend-policy.json`; above it (or with no ceiling set) it needs the human's terminal. A one-time copy cannot be resumed or changed.
 
 ### 4. Run it — agent path vs. human path
 
 Two entry points drive the identical runner:
 
 ```bash
-soulpass copy run              # agent-callable — executes every open intent once, prints a result, exits
+soulpass copy run              # agent-callable — syncs every copied portfolio once, runs what the server returns, prints a result, exits
 soulpass copy daemon           # human-only — subscribes to the leader's stream, never exits on its own
 soulpass copy daemon --once    # human-only — the opening sweep only, then exits 0 (the shape a cron entry wants)
 ```
@@ -163,23 +163,23 @@ soulpass copy daemon --once    # human-only — the opening sweep only, then exi
 ### 5. Pause / resume / stop
 
 ```bash
-soulpass copy pause <bookId>     # stop executing this book here, keep the policy and its session
-soulpass copy resume <bookId>    # resume; renews the book's session when this Mac's key is the wallet's root
-soulpass copy stop <bookId>      # drop the policy and revoke this book's session (positions stay)
+soulpass copy pause <portfolioId>     # stop executing this portfolio here, keep the policy and its session
+soulpass copy resume <portfolioId>    # resume; renews the portfolio's session when this Mac's key is the wallet's root
+soulpass copy stop <portfolioId>      # drop the policy and revoke this portfolio's session (positions stay)
 ```
 
 ### It re-plans before it signs — and that's the safety net
 
-Before executing anything, this device **re-derives the rebalance plan itself** from the book snapshot, the sleeve, and the policy you consented to — it never blindly signs whatever legs a server happened to send. A mismatch fails the run (`status: "failed"`, `reason: "plan mismatch"`) instead of executing; treat that as a security event worth reading logs over, not something to retry.
+Before executing anything, this device **re-derives the rebalance plan itself** from the portfolio snapshot, your copy's holdings, and the policy you consented to — it never blindly signs whatever trades a server happened to send. A mismatch fails the run (`status: "failed"`, `reason: "plan mismatch"`) instead of executing; treat that as a security event worth reading logs over, not something to retry.
 
 Things that look like failures but are the system working as designed:
-- **`submitted` legs / a `partial` run** — handed to the chain, not yet confirmed; the server's verifier settles them and the next recompute plans the remainder. Check `unreported` before re-running: those legs never reached the server and may be planned again.
-- **`skippedChains`** — legs this Mac cannot sign (no session for that venue). Another of your devices that can picks them up.
-- **`session-expired` warning** — the book's Solana session can no longer sign (missing, expired, stale after an owner change, mandate mismatch, or a session that lacks Memo). The book auto-pauses, server and local. Fix it with `soulpass copy resume <bookId>` on the Mac whose key is the wallet's root (it signs a new session); elsewhere resume fails and the book stays paused — copy trading never resumes by itself.
+- **`submitted` trades / a `partial` run** — handed to the chain, not yet confirmed; the server's verifier settles them and the next recompute plans the remainder. Check `unreported` before re-running: those trades never reached the server and may be planned again.
+- **`skippedChains`** — trades this Mac cannot sign (no session for that venue). Another of your devices that can picks them up.
+- **`session-expired` warning** — the portfolio's Solana session can no longer sign (missing, expired, stale after an owner change, mandate mismatch, or a session that lacks Memo). Copying that portfolio auto-pauses, server and local. A lost session (missing, revoked, stale) needs `soulpass copy activate <portfolioId>`; an expired one is renewed by `soulpass copy resume <portfolioId>` — both on the Mac whose key is the wallet's root. Elsewhere both fail and the portfolio stays paused — copy trading never resumes by itself.
 
 ### Manual alternative: tracking a wallet yourself
 
-If no book on soulpass.ai already follows the whale or strategy you want, you can still hand-track a wallet's swaps and mirror them with `soulpass spot` — slower to react and entirely on you for sizing and exits. `soulpass market wallet --chain <chain> --address <addr>` profiles the wallet (holdings, labels, realized track record). See `references/defi-cookbook.md` → "Manual Whale Tracking" for that workflow. Prefer following a book whenever one exists: the server does signal generation and position sizing, and this device only verifies and executes.
+If no portfolio on soulpass.ai already copies the whale or strategy you want, you can still hand-track a wallet's swaps and mirror them with `soulpass spot` — slower to react and entirely on you for sizing and exits. `soulpass market wallet --chain <chain> --address <addr>` profiles the wallet (holdings, labels, realized track record). See `references/defi-cookbook.md` → "Manual Whale Tracking" for that workflow. Prefer copying a portfolio whenever one exists: the server does signal generation and position sizing, and this device only verifies and executes.
 
 ---
 
@@ -443,7 +443,7 @@ Defaults to **production** (Solana Mainnet). Set `SOULPASS_ENV=test` for Devnet,
 
 | You need to... | Read |
 |----------------|------|
-| Swap strategy, token risk checks, meme coin safety, manual whale tracking (secondary to following a book — see "I want to copy trade" above), DCA, yield strategies, daemon | `references/defi-cookbook.md` |
+| Swap strategy, token risk checks, meme coin safety, manual whale tracking (secondary to copying a portfolio — see "I want to copy trade" above), DCA, yield strategies, daemon | `references/defi-cookbook.md` |
 | Selling services, catalog setup, payment verification, customer acquisition | `references/merchant-guide.md` |
 | The `urn:soulpass:payment:1` proposal and payment receipts | `references/agent-wallet.md` |
 | Your owner delegation, `contact pair` / `contact owner`, approval messages | `references/owner.md` |
