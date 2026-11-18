@@ -1,4 +1,4 @@
-# SoulPass — Hardware-Secured Solana Trading Terminal for AI Agents
+# SoulPass — Agent Identity, Messaging and a Hardware-Secured Solana Wallet
 
 [![ClawHub](https://img.shields.io/badge/ClawHub-soulpass-blue)](https://clawhub.ai/skills/soulpass)
 [![Solana](https://img.shields.io/badge/Solana-Mainnet-purple)](https://solana.com)
@@ -50,6 +50,8 @@ In 2025, Solana users lost **$90M+ to phishing** — malicious npm packages stol
 | Browser wallet | Software encryption | No — human approves |
 | MPC wallet | Provider holds shard | Yes — centralized trust |
 | **SoulPass** | **Hardware-rooted key (Secure Enclave)** | **Yes — within a human-set spend policy** |
+
+Not on an Apple Silicon Mac with macOS 26+, or in a temporary cloud sandbox? Don't install the CLI: add the SoulPass connector, the hosted MCP server `https://mcp.soulpass.ai/mcp` (e.g. `claude mcp add --transport http soulpass https://mcp.soulpass.ai/mcp`), and approve it with your passkey.
 
 ## Install as an agent skill
 
