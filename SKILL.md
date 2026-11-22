@@ -85,11 +85,11 @@ soulpass init          # on a device that has a wallet: reports its addresses
 
 ## Results you must read correctly
 
-- **Errors:** `{"error": "<code>", "message", "hint", "retryable"}` on stderr. Branch on `error` and `retryable`. `retryable: true` means nothing was committed and the same call is safe to repeat; `false` **or absent** means do not retry blindly. Exit 64 = bad arguments (fix per `hint`).
+- **Errors:** `{"error": "<code>", "message", "hint", "retryable"}` on stderr. Branch on `error` and `retryable`. `retryable: true` means nothing was committed and the same call is safe to repeat; `false` **or absent** means do not retry blindly.
 - **An outcome you cannot see is not a failure.** `payment_unknown`, `submission_indeterminate`, `confirmation_timeout`, `intent_unresolved`, a `status` of `submitted` or `incomplete`: the transaction may already be on chain. **Never resend.** Check `soulpass tx --hash <txHash>` (only `confirmed` means funds moved) or `soulpass history`; ask the human if it stays unclear.
 - **Always pass `--idempotency-key <uuid>` to `pay`.** The same key never broadcasts twice — re-running it replays the recorded outcome. Use a new key only after the chain shows the first attempt did not land.
 - **`needs_confirmation`** means the command did all its work and stopped before moving money (for example, a `pay` that must first move USDC from another chain prints the route and cost). Show the printed payload to the human; only their explicit yes makes you re-run the same command with `--yes`.
-- **`requires_tty`** — the command is human-only. **`security_error`** — stop and report; do not retry.
+- **`security_error`** — stop and report; do not retry.
 - **Dry runs cost nothing:** `--quote` on `spot` / `perps market`, `--quote-only` on `move run`, `--simulate` on `pay` / `exec` / `lend`.
 
 ## What to run
@@ -101,7 +101,7 @@ soulpass init          # on a device that has a wallet: reports its addresses
 | Check a transaction / activity | `tx --hash <sig>` · `history` |
 | Price or vet a token | `price <MINT>` · `token-info --token <MINT>` · `market launch --key sol:<MINT>` · `market search --query <name>` |
 | Buy / sell a Solana token | `spot --sell USDC --buy <MINT> --amount 50` (one side must be USDC; `--amount` is in the sell token's units) |
-| Trade perpetual futures | `perps market --token BTC --side buy --amount 100 --leverage 3` (dollars of notional) · close: `--reduce-only` or `--all` · limit: `perps order` · `perps info --type positions` |
+| Trade perpetual futures | `perps market --token BTC --side buy --amount 100 --leverage 3` · limit: `perps order` · `perps info --type positions` |
 | Move USD between Solana, Base and Hyperliquid | `move run --to hyperliquid --amount 25 --quote-only`, then the same with `--yes` once the human agrees · `move status` |
 | Earn yield | `lend markets` → `lend deposit --product <id> --amount 100 --simulate` → `lend balance` → `lend withdraw --product <id> --amount all` |
 | Copy a portfolio | `copy status` · `copy run` (see "Copy trading") |
@@ -109,7 +109,7 @@ soulpass init          # on a device that has a wallet: reports its addresses
 | Sign / pay an x402 offer | `sign message --message "…"` · `sign x402 --required "$PAYMENT_REQUIRED"` |
 | Identity and messages | `identity update` · `contact lookup|connect|accept|reject|block` · `msg send|inbox|ack|wait` |
 
-There is no `swap` or `bridge` command: a swap is `spot`, moving USDC between chains is `move run`. A Hyperliquid perpetual is never a `spot` token.
+A swap is `spot`; moving USDC between chains (a bridge) is `move run`; a Hyperliquid perpetual is never a `spot` token.
 
 ## Things the schema cannot tell you
 
@@ -123,7 +123,7 @@ There is no `swap` or `bridge` command: a swap is `spot`, moving USDC between ch
 
 **Lending recovery.** After an interruption run `lend status`, then continue the same operation with `--resume`; never start a new deposit or withdrawal while one's outcome is unknown.
 
-**Loops and bots.** For many calls a second, the human can start `soulpass serve` (a localhost JSON-RPC daemon; human-only because it never returns). Methods and auth: `references/defi-cookbook.md` → "High-Frequency Daemon".
+**Loops and bots:** the `serve` daemon, in `references/defi-cookbook.md` → "High-Frequency Daemon".
 
 **Being woken when a message arrives:** `soulpass msg wait` and your host's hooks, in `references/wake.md`.
 
@@ -134,7 +134,7 @@ Copying a **portfolio** from soulpass.ai is the primary way to copy trade: the s
 - **Setting up is human-only:** `copy start <portfolio-id> --budget <USD> --venues solana` (or soulpass.ai) sets the policy; `copy activate <portfolio-id>` authorizes its signing session on this Mac. The budget is one the user stated, never one you picked.
 - **`copy once`** is agent-callable only within the `copyOnceMaxBudgetUsd` ceiling a person wrote into the spend policy, and only for the exact command the human confirmed.
 - **Running it:** `soulpass copy run` syncs every portfolio once and exits — call it on whatever cadence wakes you. `copy daemon` never returns and its install is the human's decision. `copy pause|resume|stop <portfolio-id>` manage one portfolio.
-- **Read, don't retry:** `plan mismatch` is a security event — stop and report. `submitted` trades and `partial` runs are settled by the next sync; `skippedChains` are venues another device signs; a `session-expired` warning auto-pauses the portfolio until the human re-runs `copy activate` (lost session) or `copy resume` (expired) on the root Mac.
+- **Read, don't retry:** `plan mismatch` is a security event — stop and report. A `session-expired` warning pauses the portfolio until the human re-runs `copy activate` (lost session) or `copy resume` (expired) on the root Mac; it never resumes by itself.
 
 To mirror a single wallet by hand when no portfolio covers it: `references/defi-cookbook.md` → "Manual Whale Tracking".
 
@@ -180,13 +180,3 @@ To have the **owner's** wallet pay — or when another agent asks this one to �
 
 Production (mainnet) by default. `SOULPASS_ENV=test` uses Solana devnet and testnets; `SOULPASS_ENV=uat` is a mainnet backend that moves real money. Pin a process to one wallet with `SOULPASS_WALLET=<solanaAddress>` on multi-wallet devices.
 
-## References
-
-| You need… | Read |
-|---|---|
-| Token risk checks, slippage, meme coins, manual whale tracking, DCA / take-profit / yield recipes, the `serve` daemon | `references/defi-cookbook.md` |
-| Being woken when a message arrives (hooks, background `msg wait`) | `references/wake.md` |
-| Selling or buying services over ACE commerce | `references/merchant-guide.md` |
-| Owner pairing, consent requests and the approval card | `references/owner.md` |
-| Payment proposals and receipts | `references/agent-wallet.md` |
-| Any command's arguments and output | `soulpass schema --command "<path>"` |

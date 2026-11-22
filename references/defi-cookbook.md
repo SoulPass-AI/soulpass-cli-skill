@@ -28,20 +28,6 @@ Default slippage is **50 BPS (0.5%)**. Maximum: **500 BPS (5%)**.
 
 If a swap fails with slippage errors, increase incrementally — don't jump straight to 500.
 
-### Mint Address Mode — Same Units as Symbol Mode
-
-`--amount` is **always human-readable** in the sell token's own units, whether you pass a symbol or a mint address. The CLI looks up the mint's decimals and converts for you. Never pre-multiply by `10^decimals`:
-
-```bash
-# Symbol mode: 1.5 SOL
-soulpass spot --sell SOL --buy USDC --amount 1.5
-
-# Mint mode: STILL 1.5 SOL — not 1500000000
-soulpass spot --sell So11111111111111111111111111111111111111112 --buy EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v --amount 1.5
-```
-
-Passing atomic units here would trade `10^decimals` times more than intended. No SoulPass command takes atomic units; `sign x402` reads them from the server's offer itself.
-
 ---
 
 ## Reading Lend Positions
@@ -49,8 +35,6 @@ Passing atomic units here would trade `10^decimals` times more than intended. No
 `soulpass lend balance` returns `positions`, each bound to a product ID, chain, protocol and underlying token address. `supplied`, `debt` and `collateral` are decimal amounts; `null` means unavailable. Check `unavailable` before treating an absent position as zero.
 
 A receipt token's exchange rate is a pool conversion rate, not your personal profit. Personal earned income requires acquisition cost and deposit/withdrawal history. Never subtract 1 from the current exchange rate and label it the user's earnings.
-
-Use `lend withdraw --product <PRODUCT_ID> --amount all` for an entire position. An interrupted action must first be checked with `lend status`; then use the same action and operands with `--resume`. `lend stop` only stops unsubmitted steps and leaves settled funds in the wallet.
 
 ---
 
@@ -121,8 +105,6 @@ Goal: Earn yield on idle funds, pull out when you need to trade.
 6. soulpass spot --sell USDC --buy SOL --amount ... # trade with withdrawn funds
 ```
 
-Key: always check `lend balance` (not `balance`) before withdrawing. They are separate pools.
-
 ### Portfolio Rebalance
 
 Goal: Maintain a target allocation (e.g., 60% SOL / 40% USDC).
@@ -167,20 +149,9 @@ curl -s http://127.0.0.1:8402 -H "Authorization: Bearer $(cat ~/.soulpass/daemon
   -d '{"jsonrpc":"2.0","method":"price","params":{"tokens":["SOL","BONK"]},"id":1}'
 ```
 
-| Method | `params` | Notes |
-|---|---|---|
-| `price` | `{"tokens":["SOL","USDC"]}` | same payload as `soulpass price` |
-| `balance` | `{"token":"USDC"}` (optional; SOL when omitted) | no USD fields |
-| `tx_status` | `{"hash":"<sig>"}` | |
-| `spot` | `{"sell":"USDC","buy":"SOL","amount":"50","slippage":100}` (+ `no_wait?`) | `amount` is a **string**, human-readable; `slippage` integer bps (default 50). Tokens only: an `hl:` asset is refused, naming `perps_market`. No `swap` alias |
-| `perps_market` | `{"token":"BTC","side":"buy","amount":"100","leverage":3}` (+ `reduce_only?`, `all?`, `slippage?`) | `soulpass perps market` over JSON-RPC: `amount` is US dollars (omit with `"all":true`), `reduce_only` absent = open, `no_wait` refused |
-| `pay` | `{"to":"<addr>","amount":"0.5","token":"SOL","idempotency_key":"…"}` (+ `no_wait?`) | `amount` string, human-readable |
-| `batch` | `{"transactions":[{"to":"<addr1>","value":"1000000000","idempotency_key":"…"},…]}` | ≤ 20 items, **SOL only**, `value` is a **lamports string** |
-| `cache_invalidate` | `{}` | |
+Methods, their `params` and results: `soulpass schema --command "serve"` (each returns the same shape as its one-shot command; errors carry the CLI's `{error, hint, retryable}` in JSON-RPC `error.data`).
 
-The daemon is Solana-only, plus `perps_market` (Hyperliquid). Results have the same shape as the one-shot command (`price`, `pay`, `spot`, `perps market`); `balance` is the `soulpass balance --token` shape without USD fields. Errors come back as JSON-RPC `error.data` `{error, hint, retryable, …}` — the same contract as the CLI. `skip_sim` is refused on every method: a Solana transaction is always simulated.
-
-`batch` returns `{total, success, failed, unknown, replayed, transactions: [{index, txHash?, status, error?, hint?, verify?, replayed?}]}`: `success` = sent this call, `failed` = never sent (or landed and failed, with its `txHash`), `unknown` = may have been sent, `replayed` = answered from an earlier call under the same key. An `unknown` item is `{status: "unknown", error: "payment_unknown", hint, txHash?, verify?}` — verify it on chain (`verify` is the `soulpass tx --hash …` command when a hash is known), never retry it with a new key.
+In a `batch` result, an item with `status: "unknown"` may have been sent: verify it on chain (its `verify` field is the `soulpass tx` command), never retry it under a new key.
 
 Write methods go through the same spend policy as the CLI. Payment recipients still follow SKILL.md → "Security rules" rule 4.
 
